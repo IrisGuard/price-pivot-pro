@@ -195,7 +195,13 @@ export class InteractivePDFProcessor {
   private async createFormFields(page: PDFPage, panelY: number): Promise<void> {
     if (!this.form) return;
     
-    // Percentage input field
+    // Create banner controls at top-right of page
+    await this.createBannerControls(page);
+    
+    // Create client info fields in middle section
+    await this.createClientInfoFields(page);
+    
+    // Create percentage control at bottom panel
     const percentageField = this.form.createTextField('clientPercentage');
     percentageField.setText('0');
     percentageField.addToPage(page, {
@@ -207,59 +213,14 @@ export class InteractivePDFProcessor {
       borderWidth: 1
     });
     
-    // Company info fields
-    const companyField = this.form.createTextField('clientCompany');
-    companyField.setText('');
-    companyField.addToPage(page, {
-      x: 120,
-      y: panelY + 60,
-      width: 120,
-      height: 18,
-      borderColor: rgb(0.5, 0.5, 0.5),
-      borderWidth: 1
-    });
-    
-    const vatField = this.form.createTextField('clientVAT');
-    vatField.setText('');
-    vatField.addToPage(page, {
-      x: 310,
-      y: panelY + 60,
-      width: 100,
-      height: 18,
-      borderColor: rgb(0.5, 0.5, 0.5),
-      borderWidth: 1
-    });
-    
-    const phoneField = this.form.createTextField('clientPhone');
-    phoneField.setText('');
-    phoneField.addToPage(page, {
-      x: 480,
-      y: panelY + 60,
-      width: 100,
-      height: 18,
-      borderColor: rgb(0.5, 0.5, 0.5),
-      borderWidth: 1
-    });
-    
-    // Action buttons - Draw as visual elements and create invisible buttons
+    // Apply percentage button
     page.drawRectangle({
       x: 250, y: panelY + 85, width: 80, height: 20,
       borderColor: rgb(0.3, 0.3, 0.3), borderWidth: 1,
       color: rgb(0.8, 0.8, 0.8)
     });
     
-    page.drawRectangle({
-      x: 60, y: panelY + 35, width: 90, height: 20,
-      borderColor: rgb(0.3, 0.3, 0.3), borderWidth: 1,
-      color: rgb(0.8, 0.8, 0.8)
-    });
-    
-    page.drawRectangle({
-      x: 160, y: panelY + 35, width: 90, height: 20,
-      borderColor: rgb(0.3, 0.3, 0.3), borderWidth: 1,
-      color: rgb(0.8, 0.8, 0.8)
-    });
-    
+    // Print and Email buttons
     page.drawRectangle({
       x: 350, y: panelY + 35, width: 70, height: 20,
       borderColor: rgb(0.3, 0.3, 0.3), borderWidth: 1,
@@ -272,33 +233,129 @@ export class InteractivePDFProcessor {
       color: rgb(0.8, 0.8, 0.8)
     });
     
-    // Create invisible form buttons over the visual buttons
+    // Create form buttons
     const applyBtn = this.form.createButton('btnApplyPrices');
-    const removeBannerBtn = this.form.createButton('btnRemoveBanner');
-    const addBannerBtn = this.form.createButton('btnAddBanner');
     const printBtn = this.form.createButton('btnPrint');
     const emailBtn = this.form.createButton('btnEmail');
   }
+
+  private async createBannerControls(page: PDFPage): Promise<void> {
+    if (!this.form) return;
+    
+    const { width } = page.getSize();
+    const bannerX = width - 200;
+    const bannerY = 750;
+    
+    // Banner control buttons at top-right
+    page.drawRectangle({
+      x: bannerX, y: bannerY, width: 90, height: 20,
+      borderColor: rgb(0.3, 0.3, 0.3), borderWidth: 1,
+      color: rgb(0.8, 0.8, 0.8)
+    });
+    
+    page.drawRectangle({
+      x: bannerX + 100, y: bannerY, width: 90, height: 20,
+      borderColor: rgb(0.3, 0.3, 0.3), borderWidth: 1,
+      color: rgb(0.8, 0.8, 0.8)
+    });
+    
+    // Create banner control buttons
+    const removeBannerBtn = this.form.createButton('btnRemoveBanner');
+    const addBannerBtn = this.form.createButton('btnAddBanner');
+  }
+
+  private async createClientInfoFields(page: PDFPage): Promise<void> {
+    if (!this.form) return;
+    
+    const startY = 450;
+    const fieldHeight = 18;
+    const fieldSpacing = 25;
+    
+    // Row 1: Όνομα, Επώνυμο
+    const firstNameField = this.form.createTextField('clientFirstName');
+    firstNameField.addToPage(page, {
+      x: 60, y: startY, width: 120, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    const lastNameField = this.form.createTextField('clientLastName');
+    lastNameField.addToPage(page, {
+      x: 200, y: startY, width: 120, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    // Row 2: Εταιρεία, Επάγγελμα
+    const companyField = this.form.createTextField('clientCompany');
+    companyField.addToPage(page, {
+      x: 60, y: startY - fieldSpacing, width: 120, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    const professionField = this.form.createTextField('clientProfession');
+    professionField.addToPage(page, {
+      x: 200, y: startY - fieldSpacing, width: 120, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    // Row 3: Email, Τηλέφωνο
+    const emailField = this.form.createTextField('clientEmail');
+    emailField.addToPage(page, {
+      x: 60, y: startY - (fieldSpacing * 2), width: 140, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    const phoneField = this.form.createTextField('clientPhone');
+    phoneField.addToPage(page, {
+      x: 220, y: startY - (fieldSpacing * 2), width: 100, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    // Row 4: Διεύθυνση, ΑΦΜ, ΔΟΥ  
+    const addressField = this.form.createTextField('clientAddress');
+    addressField.addToPage(page, {
+      x: 60, y: startY - (fieldSpacing * 3), width: 160, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    const vatField = this.form.createTextField('clientVAT');
+    vatField.addToPage(page, {
+      x: 240, y: startY - (fieldSpacing * 3), width: 80, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+    
+    const taxOfficeField = this.form.createTextField('clientTaxOffice');
+    taxOfficeField.addToPage(page, {
+      x: 340, y: startY - (fieldSpacing * 3), width: 80, height: fieldHeight,
+      borderColor: rgb(0.5, 0.5, 0.5), borderWidth: 1
+    });
+  }
   
   private addInstructionText(page: PDFPage, panelY: number): void {
-    // Field labels
+    const { width } = page.getSize();
+    
+    // Bottom panel labels
     page.drawText('Ποσοστό Αλλαγής:', { x: 60, y: panelY + 90, size: 9, color: rgb(0.3, 0.3, 0.3) });
     page.drawText('%', { x: 245, y: panelY + 90, size: 9, color: rgb(0.3, 0.3, 0.3) });
     page.drawText('ΕΦΑΡΜΟΓΗ', { x: 255, y: panelY + 90, size: 8, color: rgb(0, 0, 0) });
     
-    page.drawText('Εταιρεία:', { x: 60, y: panelY + 65, size: 9, color: rgb(0.3, 0.3, 0.3) });
-    page.drawText('ΑΦΜ:', { x: 250, y: panelY + 65, size: 9, color: rgb(0.3, 0.3, 0.3) });
-    page.drawText('Τηλέφωνο:', { x: 420, y: panelY + 65, size: 9, color: rgb(0.3, 0.3, 0.3) });
-    
-    // Button labels
-    page.drawText('ΑΦΑΙΡΕΣΗ', { x: 65, y: panelY + 40, size: 7, color: rgb(0, 0, 0) });
-    page.drawText('BANNER', { x: 75, y: panelY + 32, size: 7, color: rgb(0, 0, 0) });
-    
-    page.drawText('ΠΡΟΣΘΗΚΗ', { x: 165, y: panelY + 40, size: 7, color: rgb(0, 0, 0) });
-    page.drawText('BANNER', { x: 175, y: panelY + 32, size: 7, color: rgb(0, 0, 0) });
-    
     page.drawText('ΕΚΤΥΠΩΣΗ', { x: 355, y: panelY + 38, size: 7, color: rgb(0, 0, 0) });
     page.drawText('EMAIL', { x: 445, y: panelY + 38, size: 7, color: rgb(0, 0, 0) });
+    
+    // Banner control labels at top-right
+    const bannerX = width - 200;
+    page.drawText('ΑΦΑΙΡΕΣΗ BANNER', { x: bannerX + 5, y: 730, size: 7, color: rgb(0, 0, 0) });
+    page.drawText('ΠΡΟΣΘΗΚΗ BANNER', { x: bannerX + 105, y: 730, size: 7, color: rgb(0, 0, 0) });
+    
+    // Client info field labels
+    page.drawText('Όνομα:', { x: 60, y: 470, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('Επώνυμο:', { x: 200, y: 470, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('Εταιρεία:', { x: 60, y: 445, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('Επάγγελμα:', { x: 200, y: 445, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('Email:', { x: 60, y: 420, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('Τηλέφωνο:', { x: 220, y: 420, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('Διεύθυνση:', { x: 60, y: 395, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('ΑΦΜ:', { x: 240, y: 395, size: 9, color: rgb(0.3, 0.3, 0.3) });
+    page.drawText('ΔΟΥ:', { x: 340, y: 395, size: 9, color: rgb(0.3, 0.3, 0.3) });
     
     // Warning text
     page.drawText('ΠΡΟΣΟΧΗ: Οι αλλαγές εφαρμόζονται μόνο σε εξουσιοδοτημένα PDF', {
@@ -431,27 +488,48 @@ export class InteractivePDFProcessor {
         return;
       }
       
+      // Get all client info fields
+      var firstNameField = this.getField('clientFirstName');
+      var lastNameField = this.getField('clientLastName');
       var companyField = this.getField('clientCompany');
-      var vatField = this.getField('clientVAT');
+      var professionField = this.getField('clientProfession');
+      var emailField = this.getField('clientEmail');
       var phoneField = this.getField('clientPhone');
+      var addressField = this.getField('clientAddress');
+      var vatField = this.getField('clientVAT');
+      var taxOfficeField = this.getField('clientTaxOffice');
       
-      var company = companyField ? companyField.value : 'Πελάτης';
-      var vat = vatField ? vatField.value : '';
+      var firstName = firstNameField ? firstNameField.value : '';
+      var lastName = lastNameField ? lastNameField.value : '';
+      var company = companyField ? companyField.value : '';
+      var profession = professionField ? professionField.value : '';
+      var email = emailField ? emailField.value : '';
       var phone = phoneField ? phoneField.value : '';
+      var address = addressField ? addressField.value : '';
+      var vat = vatField ? vatField.value : '';
+      var taxOffice = taxOfficeField ? taxOfficeField.value : '';
       
-      if (!company.trim()) {
-        app.alert('Παρακαλώ συμπληρώστε το όνομα της εταιρείας σας πριν την αποστολή', 1, 0);
+      var fullName = (firstName + ' ' + lastName).trim();
+      var displayName = fullName || company || 'Πελάτης';
+      
+      if (!company.trim() && !fullName) {
+        app.alert('Παρακαλώ συμπληρώστε τουλάχιστον το όνομα ή την εταιρεία σας πριν την αποστολή', 1, 0);
         return;
       }
       
-      var subject = 'Προσφορά από ' + company;
+      var subject = 'Προσφορά από ' + displayName;
       var body = 'Αγαπητοί κύριοι,\\n\\n';
       body += 'Παρακαλώ βρείτε συνημμένη την τελική προσφορά μας.\\n\\n';
-      body += 'Στοιχεία εταιρείας:\\n';
-      body += '• Εταιρεία: ' + company + '\\n';
-      if (vat) body += '• ΑΦΜ: ' + vat + '\\n';
+      body += 'Στοιχεία:\\n';
+      if (fullName) body += '• Όνομα: ' + fullName + '\\n';
+      if (company) body += '• Εταιρεία: ' + company + '\\n';
+      if (profession) body += '• Επάγγελμα: ' + profession + '\\n';
+      if (email) body += '• Email: ' + email + '\\n';
       if (phone) body += '• Τηλέφωνο: ' + phone + '\\n';
-      body += '\\nΜε εκτίμηση,\\n' + company;
+      if (address) body += '• Διεύθυνση: ' + address + '\\n';
+      if (vat) body += '• ΑΦΜ: ' + vat + '\\n';
+      if (taxOffice) body += '• ΔΟΥ: ' + taxOffice + '\\n';
+      body += '\\nΜε εκτίμηση,\\n' + displayName;
       
       try {
         this.mailDoc({
