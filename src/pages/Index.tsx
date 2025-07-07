@@ -6,10 +6,10 @@ const Index = () => {
       <div className="container mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4 bg-gradient-primary bg-clip-text text-transparent">
-            Σύστημα Διαχείρισης Προσφορών PDF
+            🔒 Δημιουργία Σφραγισμένου PDF Προσφοράς
           </h1>
           <p className="text-xl text-muted-foreground">
-            Επαγγελματικά εργαλεία για προμηθευτές και πελάτες
+            Δημιουργία προστατευμένου PDF με ενσωματωμένες λειτουργίες τιμολόγησης και παραμετροποίησης
           </p>
         </div>
 

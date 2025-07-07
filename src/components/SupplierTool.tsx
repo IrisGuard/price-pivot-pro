@@ -123,18 +123,18 @@ const SupplierTool = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            🔒 Δημιουργία Σφραγισμένου PDF
+            🔒 Δημιουργία Σφραγισμένου PDF Προσφοράς
           </CardTitle>
           <CardDescription className="text-center text-sm">
-            Δημιουργία προσφοράς με ενσωματωμένες διαδραστικές λειτουργίες για Adobe Acrobat.<br/>
-            <span className="text-red-600 font-medium">⚠️ Το PDF θα δουλεύει ΜΟΝΟ με τις δικές σας προσφορές</span>
+            Δημιουργία προστατευμένου PDF προσφοράς με ενσωματωμένες λειτουργίες τιμολόγησης και παραμετροποίησης.<br/>
+            <span className="text-red-600 font-medium">⚠️ Το PDF δουλεύει αποκλειστικά με τις δικές σας προσφορές</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* PDF Selection */}
           <div className="space-y-2">
             <Label htmlFor="factory-pdf" className="text-sm font-medium">
-              Επιλογή PDF εργοστασίου:
+              Επιλογή αρχείου προσφοράς:
             </Label>
             <div className="flex items-center gap-4">
               <Input
@@ -206,17 +206,6 @@ const SupplierTool = () => {
             🔒 ΔΗΜΙΟΥΡΓΙΑ ΣΦΡΑΓΙΣΜΕΝΟΥ PDF
           </Button>
           
-          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <h4 className="font-semibold text-yellow-800 mb-2">📋 Τι θα περιέχει το PDF:</h4>
-            <ul className="text-sm text-yellow-700 space-y-1">
-              <li>✅ Ενσωματωμένο panel ελέγχου στο κάτω μέρος</li>
-              <li>✅ Λειτουργίες αλλαγής ποσοστού τιμών</li>
-              <li>✅ Διαχείριση banner εταιρείας</li>
-              <li>✅ Πεδία στοιχείων πελάτη</li>
-              <li>✅ Κουμπιά εκτύπωσης και email</li>
-              <li>🔒 Ασφάλεια - δουλεύει μόνο με το δικό σας PDF</li>
-            </ul>
-          </div>
         </CardContent>
       </Card>
     </div>
