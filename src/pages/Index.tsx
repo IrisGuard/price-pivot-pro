@@ -1,6 +1,4 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import SupplierTool from "@/components/SupplierTool";
-import ClientTool from "@/components/ClientTool";
 
 const Index = () => {
   return (
@@ -15,24 +13,9 @@ const Index = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="supplier" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 max-w-md mx-auto mb-8">
-            <TabsTrigger value="supplier" className="text-lg py-3">
-              Εργαλείο Προμηθευτή
-            </TabsTrigger>
-            <TabsTrigger value="client" className="text-lg py-3">
-              Εργαλείο Πελάτη
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="supplier" className="mt-0">
-            <SupplierTool />
-          </TabsContent>
-          
-          <TabsContent value="client" className="mt-0">
-            <ClientTool />
-          </TabsContent>
-        </Tabs>
+        <div className="w-full">
+          <SupplierTool />
+        </div>
       </div>
     </div>
   );

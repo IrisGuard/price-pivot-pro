@@ -45,7 +45,7 @@ const SupplierTool = () => {
     }
   };
 
-  const handleCreateQuotation = () => {
+  const handleCreateQuotation = async () => {
     if (!factoryPdf) {
       toast({
         title: "Σφάλμα",
@@ -73,11 +73,49 @@ const SupplierTool = () => {
       return;
     }
 
-    // Here will be the PDF processing logic
-    toast({
-      title: "Επεξεργασία",
-      description: `Δημιουργία προσφοράς με ποσοστό ${percentage}%...`,
-    });
+    try {
+      toast({
+        title: "Επεξεργασία",
+        description: "Δημιουργία σφραγισμένου PDF με ενσωματωμένες λειτουργίες...",
+      });
+
+      // Import the processor
+      const { interactivePDFProcessor } = await import("@/lib/pdfProcessor");
+
+      // Convert files to Uint8Array
+      const factoryPdfBytes = new Uint8Array(await factoryPdf.arrayBuffer());
+      const bannerImageBytes = new Uint8Array(await bannerImage.arrayBuffer());
+
+      // Create sealed interactive PDF
+      const sealedPdfBytes = await interactivePDFProcessor.createSealedQuotationPDF({
+        factoryPdfBytes,
+        bannerImageBytes,
+        percentage: Number(percentage),
+      });
+
+      // Create download link
+      const blob = new Blob([sealedPdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Προσφορά_Δική_Μου.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: "Επιτυχία",
+        description: "Το σφραγισμένο PDF δημιουργήθηκε και λήφθηκε επιτυχώς",
+      });
+    } catch (error) {
+      console.error('Error creating interactive PDF:', error);
+      toast({
+        title: "Σφάλμα",
+        description: "Σφάλμα κατά τη δημιουργία του PDF",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -85,10 +123,10 @@ const SupplierTool = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            Εργαλείο Προμηθευτή
+            Δημιουργία Σφραγισμένου PDF
           </CardTitle>
           <CardDescription className="text-center">
-            Δημιουργία προσφοράς από PDF εργοστασίου
+            Δημιουργία προσφοράς με ενσωματωμένες διαδραστικές λειτουργίες
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
