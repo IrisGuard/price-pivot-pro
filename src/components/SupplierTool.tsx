@@ -75,25 +75,25 @@ const SupplierTool = () => {
 
     try {
       toast({
-        title: "Επεξεργασία",
-        description: "Δημιουργία σφραγισμένου PDF με ενσωματωμένες λειτουργίες...",
+        title: "🔄 ΔΗΜΙΟΥΡΓΙΑ ΣΦΡΑΓΙΣΜΕΝΟΥ PDF",
+        description: "Ενσωμάτωση JavaScript engine και δημιουργία εξουσιοδοτημένου PDF...",
       });
 
-      // Import the processor
+      // Import the advanced processor
       const { interactivePDFProcessor } = await import("@/lib/pdfProcessor");
 
       // Convert files to Uint8Array
       const factoryPdfBytes = new Uint8Array(await factoryPdf.arrayBuffer());
       const bannerImageBytes = new Uint8Array(await bannerImage.arrayBuffer());
 
-      // Create sealed interactive PDF
+      // Create sealed interactive PDF with embedded JavaScript
       const sealedPdfBytes = await interactivePDFProcessor.createSealedQuotationPDF({
         factoryPdfBytes,
         bannerImageBytes,
         percentage: Number(percentage),
       });
 
-      // Create download link
+      // Create download link with specific filename
       const blob = new Blob([sealedPdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -105,8 +105,8 @@ const SupplierTool = () => {
       URL.revokeObjectURL(url);
 
       toast({
-        title: "Επιτυχία",
-        description: "Το σφραγισμένο PDF δημιουργήθηκε και λήφθηκε επιτυχώς",
+        title: "✅ ΣΦΡΑΓΙΣΜΕΝΟ PDF ΕΤΟΙΜΟ",
+        description: "Το PDF περιέχει ενσωματωμένες λειτουργίες για τον πελάτη. Μόνο αυτό το αρχείο θα δουλεύει με τις διαδραστικές λειτουργίες.",
       });
     } catch (error) {
       console.error('Error creating interactive PDF:', error);
@@ -123,10 +123,11 @@ const SupplierTool = () => {
       <Card>
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            Δημιουργία Σφραγισμένου PDF
+            🔒 Δημιουργία Σφραγισμένου PDF
           </CardTitle>
-          <CardDescription className="text-center">
-            Δημιουργία προσφοράς με ενσωματωμένες διαδραστικές λειτουργίες
+          <CardDescription className="text-center text-sm">
+            Δημιουργία προσφοράς με ενσωματωμένες διαδραστικές λειτουργίες για Adobe Acrobat.<br/>
+            <span className="text-red-600 font-medium">⚠️ Το PDF θα δουλεύει ΜΟΝΟ με τις δικές σας προσφορές</span>
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -199,11 +200,23 @@ const SupplierTool = () => {
           {/* Create Button */}
           <Button
             onClick={handleCreateQuotation}
-            className="w-full h-12 text-lg font-semibold"
+            className="w-full h-12 text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
             size="lg"
           >
-            ΔΗΜΙΟΥΡΓΙΑ ΠΡΟΣΦΟΡΑΣ
+            🔒 ΔΗΜΙΟΥΡΓΙΑ ΣΦΡΑΓΙΣΜΕΝΟΥ PDF
           </Button>
+          
+          <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <h4 className="font-semibold text-yellow-800 mb-2">📋 Τι θα περιέχει το PDF:</h4>
+            <ul className="text-sm text-yellow-700 space-y-1">
+              <li>✅ Ενσωματωμένο panel ελέγχου στο κάτω μέρος</li>
+              <li>✅ Λειτουργίες αλλαγής ποσοστού τιμών</li>
+              <li>✅ Διαχείριση banner εταιρείας</li>
+              <li>✅ Πεδία στοιχείων πελάτη</li>
+              <li>✅ Κουμπιά εκτύπωσης και email</li>
+              <li>🔒 Ασφάλεια - δουλεύει μόνο με το δικό σας PDF</li>
+            </ul>
+          </div>
         </CardContent>
       </Card>
     </div>
