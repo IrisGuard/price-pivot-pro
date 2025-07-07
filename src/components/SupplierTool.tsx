@@ -55,7 +55,7 @@ const SupplierTool = () => {
       });
 
       // Import the advanced processor
-      const { interactivePDFProcessor } = await import("@/lib/pdfProcessor");
+      const { interactivePDFProcessor } = await import("@/lib/pdf/pdfProcessor");
 
       // Convert factory PDF to Uint8Array
       const factoryPdfBytes = new Uint8Array(await factoryPdf.arrayBuffer());
