@@ -8,7 +8,6 @@ import { FileUp } from "lucide-react";
 
 const SupplierTool = () => {
   const [factoryPdf, setFactoryPdf] = useState<File | null>(null);
-  const [bannerImage, setBannerImage] = useState<File | null>(null);
   const [percentage, setPercentage] = useState<string>("");
 
   const handleFactoryPdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -28,22 +27,6 @@ const SupplierTool = () => {
     }
   };
 
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && file.type.startsWith("image/")) {
-      setBannerImage(file);
-      toast({
-        title: "Banner",
-        description: `Επιλέχθηκε: ${file.name}`,
-      });
-    } else {
-      toast({
-        title: "Σφάλμα",
-        description: "Παρακαλώ επιλέξτε έγκυρη εικόνα (PNG, JPG)",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleCreateQuotation = async () => {
     if (!factoryPdf) {
@@ -55,14 +38,6 @@ const SupplierTool = () => {
       return;
     }
 
-    if (!bannerImage) {
-      toast({
-        title: "Σφάλμα",
-        description: "Παρακαλώ επιλέξτε banner",
-        variant: "destructive",
-      });
-      return;
-    }
 
     if (!percentage || isNaN(Number(percentage))) {
       toast({
@@ -82,14 +57,12 @@ const SupplierTool = () => {
       // Import the advanced processor
       const { interactivePDFProcessor } = await import("@/lib/pdfProcessor");
 
-      // Convert files to Uint8Array
+      // Convert factory PDF to Uint8Array
       const factoryPdfBytes = new Uint8Array(await factoryPdf.arrayBuffer());
-      const bannerImageBytes = new Uint8Array(await bannerImage.arrayBuffer());
 
-      // Create sealed interactive PDF with embedded JavaScript
+      // Create sealed interactive PDF with embedded JavaScript and default EUROPLAST banner
       const sealedPdfBytes = await interactivePDFProcessor.createSealedQuotationPDF({
         factoryPdfBytes,
-        bannerImageBytes,
         percentage: Number(percentage),
       });
 
@@ -153,26 +126,16 @@ const SupplierTool = () => {
             )}
           </div>
 
-          {/* Banner Selection */}
+          {/* Default Banner Info */}
           <div className="space-y-2">
-            <Label htmlFor="banner-image" className="text-sm font-medium">
-              Επιλογή banner (εικόνα PNG/JPG):
-            </Label>
-            <div className="flex items-center gap-4">
-              <Input
-                id="banner-image"
-                type="file"
-                accept="image/*"
-                onChange={handleBannerChange}
-                className="flex-1"
-              />
-              <FileUp className="h-5 w-5 text-muted-foreground" />
-            </div>
-            {bannerImage && (
-              <p className="text-sm text-muted-foreground">
-                Επιλεγμένο: {bannerImage.name}
+            <div className="bg-muted p-3 rounded-lg border">
+              <p className="text-sm font-medium text-muted-foreground">
+                📋 Banner Προεπιλογής: <span className="font-semibold text-foreground">EUROPLAST GROUP</span>
               </p>
-            )}
+              <p className="text-xs text-muted-foreground mt-1">
+                Το banner σας θα εφαρμοστεί αυτόματα σε κάθε PDF προσφοράς
+              </p>
+            </div>
           </div>
 
           {/* Percentage Input */}

@@ -2,7 +2,7 @@ import { PDFDocument, PDFForm, PDFTextField, PDFButton, rgb, PDFFont, PDFPage } 
 
 export interface InteractivePDFOptions {
   factoryPdfBytes: Uint8Array;
-  bannerImageBytes: Uint8Array;
+  bannerImageBytes?: Uint8Array;
   percentage: number;
 }
 
@@ -13,7 +13,20 @@ export class InteractivePDFProcessor {
   private readonly SECURITY_HASH = 'SHA256_UNIQUE_IDENTIFIER_2024';
 
   async createSealedQuotationPDF(options: InteractivePDFOptions): Promise<Uint8Array> {
-    const { factoryPdfBytes, bannerImageBytes, percentage } = options;
+    const { factoryPdfBytes, percentage } = options;
+    let { bannerImageBytes } = options;
+    
+    // Load default EUROPLAST banner if none provided
+    if (!bannerImageBytes) {
+      try {
+        const response = await fetch('/europlast-banner.png');
+        const arrayBuffer = await response.arrayBuffer();
+        bannerImageBytes = new Uint8Array(arrayBuffer);
+      } catch (error) {
+        console.warn('Could not load default banner:', error);
+        // Continue without banner replacement
+      }
+    }
     
     // Load the factory PDF
     this.pdfDoc = await PDFDocument.load(factoryPdfBytes);
@@ -25,8 +38,10 @@ export class InteractivePDFProcessor {
     // Apply initial price adjustment and extract price coordinates
     await this.processPricesWithCoordinates(percentage);
     
-    // Replace banner with supplier's banner
-    await this.replaceBanner(bannerImageBytes);
+    // Replace banner with supplier's banner (if available)
+    if (bannerImageBytes) {
+      await this.replaceBanner(bannerImageBytes);
+    }
     
     // Create embedded interactive control panel
     await this.createEmbeddedControlPanel();
