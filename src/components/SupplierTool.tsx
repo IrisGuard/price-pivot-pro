@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { FileUp, Eye } from "lucide-react";
-import { PDFViewer } from "@/components/PDFViewer";
+import { UniversalFileViewer } from "@/components/UniversalFileViewer";
 import { PDFEditingPanel } from "@/components/PDFEditingPanel";
 
 interface PriceData {
@@ -16,28 +16,28 @@ interface PriceData {
 }
 
 const SupplierTool = () => {
-  const [factoryPdf, setFactoryPdf] = useState<File | null>(null);
+  const [factoryFile, setFactoryFile] = useState<File | null>(null);
   const [percentage, setPercentage] = useState<string>("");
   const [showEditor, setShowEditor] = useState<boolean>(false);
   const [detectedPrices, setDetectedPrices] = useState<PriceData[]>([]);
   const [currentPrices, setCurrentPrices] = useState<PriceData[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const handleFactoryPdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFactoryFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && file.type === "application/pdf") {
-      setFactoryPdf(file);
+    if (file && (file.type === "application/pdf" || file.name.endsWith('.rtf'))) {
+      setFactoryFile(file);
       setShowEditor(false); // Reset editor when new file is selected
       setDetectedPrices([]);
       setCurrentPrices([]);
       toast({
-        title: "PDF Εργοστασίου",
+        title: "Αρχείο Εργοστασίου",
         description: `Επιλέχθηκε: ${file.name}`,
       });
     } else {
       toast({
         title: "Σφάλμα",
-        description: "Παρακαλώ επιλέξτε έγκυρο PDF αρχείο",
+        description: "Παρακαλώ επιλέξτε έγκυρο PDF ή RTF αρχείο",
         variant: "destructive",
       });
     }
@@ -53,10 +53,10 @@ const SupplierTool = () => {
   };
 
   const handleOpenEditor = () => {
-    if (!factoryPdf) {
+    if (!factoryFile) {
       toast({
         title: "Σφάλμα",
-        description: "Παρακαλώ επιλέξτε PDF εργοστασίου πρώτα",
+        description: "Παρακαλώ επιλέξτε αρχείο εργοστασίου πρώτα",
         variant: "destructive",
       });
       return;
@@ -66,10 +66,10 @@ const SupplierTool = () => {
 
 
   const handleCreateQuotationFromEditor = async () => {
-    if (!factoryPdf) {
+    if (!factoryFile) {
       toast({
         title: "Σφάλμα",
-        description: "Παρακαλώ επιλέξτε PDF εργοστασίου",
+        description: "Παρακαλώ επιλέξτε αρχείο εργοστασίου",
         variant: "destructive",
       });
       return;
@@ -86,8 +86,29 @@ const SupplierTool = () => {
       // Import the advanced processor
       const { interactivePDFProcessor } = await import("@/lib/pdf/pdfProcessor");
 
-      // Convert factory PDF to Uint8Array
-      const factoryPdfBytes = new Uint8Array(await factoryPdf.arrayBuffer());
+      // Convert factory file to Uint8Array (convert RTF to PDF if needed)
+      let factoryPdfBytes: Uint8Array;
+      
+      if (factoryFile.name.endsWith('.rtf')) {
+        // For RTF files, we need to convert them to PDF first
+        // This is a simplified approach - in production you'd want a proper RTF to PDF converter
+        const rtfContent = await factoryFile.text();
+        const pdfDoc = await import('pdf-lib').then(lib => lib.PDFDocument.create());
+        const page = pdfDoc.addPage();
+        const { height } = page.getSize();
+        
+        // Simple text extraction from RTF (remove RTF codes)
+        const plainText = rtfContent
+          .replace(/\\[a-zA-Z]+\d*\s?/g, '')
+          .replace(/[{}]/g, '')
+          .replace(/\\\\/g, '\\')
+          .trim();
+        
+        page.drawText(plainText, { x: 50, y: height - 50, size: 12 });
+        factoryPdfBytes = await pdfDoc.save();
+      } else {
+        factoryPdfBytes = new Uint8Array(await factoryFile.arrayBuffer());
+      }
 
       // Calculate percentage from detected vs current prices
       const totalOriginal = detectedPrices.reduce((sum, price) => sum + price.value, 0);
@@ -128,10 +149,10 @@ const SupplierTool = () => {
   };
 
   const handleCreateQuotation = async () => {
-    if (!factoryPdf) {
+    if (!factoryFile) {
       toast({
         title: "Σφάλμα",
-        description: "Παρακαλώ επιλέξτε PDF εργοστασίου",
+        description: "Παρακαλώ επιλέξτε αρχείο εργοστασίου",
         variant: "destructive",
       });
       return;
@@ -155,8 +176,26 @@ const SupplierTool = () => {
       // Import the advanced processor
       const { interactivePDFProcessor } = await import("@/lib/pdf/pdfProcessor");
 
-      // Convert factory PDF to Uint8Array
-      const factoryPdfBytes = new Uint8Array(await factoryPdf.arrayBuffer());
+      // Convert factory file to Uint8Array (convert RTF to PDF if needed)
+      let factoryPdfBytes: Uint8Array;
+      
+      if (factoryFile.name.endsWith('.rtf')) {
+        const rtfContent = await factoryFile.text();
+        const pdfDoc = await import('pdf-lib').then(lib => lib.PDFDocument.create());
+        const page = pdfDoc.addPage();
+        const { height } = page.getSize();
+        
+        const plainText = rtfContent
+          .replace(/\\[a-zA-Z]+\d*\s?/g, '')
+          .replace(/[{}]/g, '')
+          .replace(/\\\\/g, '\\')
+          .trim();
+        
+        page.drawText(plainText, { x: 50, y: height - 50, size: 12 });
+        factoryPdfBytes = await pdfDoc.save();
+      } else {
+        factoryPdfBytes = new Uint8Array(await factoryFile.arrayBuffer());
+      }
 
       // Create sealed interactive PDF with embedded JavaScript and default EUROPLAST banner
       const sealedPdfBytes = await interactivePDFProcessor.createSealedQuotationPDF({
@@ -196,9 +235,9 @@ const SupplierTool = () => {
         <div className="border-b bg-card p-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold">📝 PDF Editor - {factoryPdf?.name}</h1>
+              <h1 className="text-2xl font-bold">📝 File Editor - {factoryFile?.name}</h1>
               <p className="text-sm text-muted-foreground">
-                Επεξεργαστείτε το PDF σας σε πραγματικό χρόνο
+                Επεξεργαστείτε το αρχείο σας σε πραγματικό χρόνο
               </p>
             </div>
             <Button variant="outline" onClick={() => setShowEditor(false)}>
@@ -209,10 +248,10 @@ const SupplierTool = () => {
 
         {/* Editor Layout */}
         <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-          {/* PDF Viewer - Left Side */}
+          {/* File Viewer - Left Side */}
           <div className="flex-1 min-w-0">
-            <PDFViewer 
-              pdfFile={factoryPdf} 
+            <UniversalFileViewer 
+              file={factoryFile} 
               onPricesDetected={handlePricesDetected}
             />
           </div>
@@ -246,23 +285,23 @@ const SupplierTool = () => {
         <CardContent className="space-y-6">
           {/* PDF Selection */}
           <div className="space-y-2">
-            <Label htmlFor="factory-pdf" className="text-sm font-medium">
-              Επιλογή αρχείου προσφοράς:
+            <Label htmlFor="factory-file" className="text-sm font-medium">
+              Επιλογή αρχείου προσφοράς (PDF ή RTF):
             </Label>
             <div className="flex items-center gap-4">
               <Input
-                id="factory-pdf"
+                id="factory-file"
                 type="file"
-                accept=".pdf"
-                onChange={handleFactoryPdfChange}
+                accept=".pdf,.rtf"
+                onChange={handleFactoryFileChange}
                 className="flex-1"
               />
               <FileUp className="h-5 w-5 text-muted-foreground" />
             </div>
-            {factoryPdf && (
+            {factoryFile && (
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">
-                  Επιλεγμένο: {factoryPdf.name}
+                  Επιλεγμένο: {factoryFile.name}
                 </p>
                 <Button 
                   variant="outline" 
@@ -270,7 +309,7 @@ const SupplierTool = () => {
                   className="w-full"
                 >
                   <Eye className="h-4 w-4 mr-2" />
-                  Άνοιγμα PDF Editor
+                  Άνοιγμα File Editor
                 </Button>
               </div>
             )}
