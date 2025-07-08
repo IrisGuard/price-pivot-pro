@@ -14,9 +14,16 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
     if (files.length > 0) {
       const file = files[0];
       
-      // Validate file type
-      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
-        alert('Παρακαλώ επιλέξτε ένα PDF αρχείο');
+      // Validate file type - Support PDF, RTF, CSV, Excel
+      const fileExtension = file.name.toLowerCase().split('.').pop();
+      const supportedTypes = ['pdf', 'rtf', 'csv', 'xlsx', 'xls'];
+      const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
+      const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+      const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
+      const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
+      
+      if (!isPDF && !isRTF && !isCSV && !isExcel) {
+        alert('Παρακαλώ επιλέξτε PDF, RTF, CSV ή Excel αρχείο');
         return;
       }
       
@@ -33,7 +40,11 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop: handleFileSelect,
     accept: {
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'text/rtf': ['.rtf'],
+      'text/csv': ['.csv'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.ms-excel': ['.xls']
     },
     multiple: false,
     maxSize: 50 * 1024 * 1024 // 50MB
@@ -45,7 +56,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
         <Alert className="mb-8">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Υποστηριζόμενα αρχεία:</strong> PDF μόνο
+            <strong>Υποστηριζόμενα αρχεία:</strong> PDF, RTF, CSV, Excel (XLSX/XLS)
           </AlertDescription>
         </Alert>
 
@@ -73,7 +84,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
                   {isDragActive ? 'Αποθέστε το αρχείο εδώ' : 'Επιλέξτε αρχείο προσφοράς'}
                 </h3>
                 <p className="text-muted-foreground">
-                  Σύρετε και αποθέστε ένα PDF αρχείο ή κάντε κλικ για επιλογή
+                  Σύρετε και αποθέστε PDF, RTF, CSV ή Excel αρχείο ή κάντε κλικ για επιλογή
                 </p>
               </div>
               
@@ -84,7 +95,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
               
               <div className="text-sm text-muted-foreground">
                 <p>Μέγιστο μέγεθος: 50MB</p>
-                <p>Υποστηριζόμενοι τύποι: PDF</p>
+                <p>Υποστηριζόμενοι τύποι: PDF, RTF, CSV, Excel</p>
               </div>
             </div>
           </div>

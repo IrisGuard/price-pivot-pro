@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { ProfessionalDocumentViewer } from '@/components/ProfessionalDocumentViewer';
+import { UniversalFileProcessor } from '@/components/UniversalFileProcessor';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
 import { usePDFProcessor } from '@/hooks/usePDFProcessor';
 
@@ -67,9 +67,9 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Professional Document Viewer with Dark Background */}
+      {/* Universal File Processor - Full Support for PDF/RTF/CSV/Excel */}
       <div className="w-full bg-background">
-        <ProfessionalDocumentViewer 
+        <UniversalFileProcessor 
           file={file}
           onPricesDetected={handlePricesDetected}
           onTextExtracted={setExtractedText}
