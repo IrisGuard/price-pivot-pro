@@ -188,8 +188,8 @@ export class InteractivePDFProcessor {
         await this.replaceBanner(this.pdfDoc, bannerImageBytes);
       }
       
-      // Apply price changes if detected prices exist
-      if (detectedPrices && detectedPrices.length > 0 && percentage !== 0) {
+      // Apply price changes if detected prices exist (including 0% for reset)
+      if (detectedPrices && detectedPrices.length > 0) {
         await this.applyPriceChanges(this.pdfDoc, detectedPrices, percentage);
       }
       

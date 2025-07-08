@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { UniversalFileProcessor } from '@/components/UniversalFileProcessor';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
 import { usePDFProcessor } from '@/hooks/usePDFProcessor';
+import { useTotalCalculation } from '@/hooks/useTotalCalculation';
 
 interface PriceData {
   value: number;
@@ -30,6 +31,7 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
   });
 
   const { createInteractivePDF } = usePDFProcessor();
+  const { total, formattedTotal } = useTotalCalculation(detectedPrices);
 
   const handlePricesDetected = useCallback((prices: PriceData[]) => {
     setDetectedPrices(prices);
@@ -38,8 +40,13 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
 
   const handlePercentageChange = useCallback((percentage: number) => {
     setCurrentPercentage(percentage);
-    // Real-time price updates would go here
-  }, []);
+    // Apply percentage to all detected prices in real-time
+    const updatedPrices = detectedPrices.map(price => ({
+      ...price,
+      value: Math.round(price.value * (1 + percentage / 100) * 100) / 100
+    }));
+    onPricesDetected(updatedPrices);
+  }, [detectedPrices, onPricesDetected]);
 
   const handleBannerChange = useCallback((file: File) => {
     setBannerFile(file);

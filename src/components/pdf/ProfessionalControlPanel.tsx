@@ -234,7 +234,15 @@ export const ProfessionalControlPanel = ({
               type="number"
               placeholder="+10 ή -15"
               value={percentage}
-              onChange={(e) => setPercentage(e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setPercentage(newValue);
+                // Real-time percentage application
+                const numValue = parseFloat(newValue);
+                if (!isNaN(numValue) && onPercentageChange) {
+                  onPercentageChange(numValue);
+                }
+              }}
               className="w-32"
               disabled={false} // Always enabled for clients
             />
