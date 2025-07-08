@@ -13,22 +13,50 @@ export class RTFProcessor {
     const startTime = Date.now();
     
     const arrayBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
     
-    // Try multiple encodings
+    // Enhanced encoding detection
     let rtfData = '';
     let encoding = 'utf-8';
     
-    try {
-      rtfData = new TextDecoder('utf-8').decode(arrayBuffer);
+    // Check for BOM (Byte Order Mark)
+    if (uint8Array[0] === 0xEF && uint8Array[1] === 0xBB && uint8Array[2] === 0xBF) {
+      // UTF-8 BOM detected
+      rtfData = new TextDecoder('utf-8').decode(arrayBuffer.slice(3));
       encoding = 'utf-8';
-    } catch {
-      try {
-        rtfData = new TextDecoder('windows-1252').decode(arrayBuffer);
-        encoding = 'windows-1252';
-      } catch {
-        rtfData = new TextDecoder('iso-8859-1').decode(arrayBuffer);
-        encoding = 'iso-8859-1';
+    } else {
+      // Try multiple encodings with better error handling
+      const encodings = ['utf-8', 'windows-1252', 'windows-1253', 'iso-8859-7', 'iso-8859-1'];
+      let bestResult = { data: '', encoding: 'utf-8', score: 0 };
+      
+      for (const enc of encodings) {
+        try {
+          const decoded = new TextDecoder(enc, { fatal: false }).decode(arrayBuffer);
+          
+          // Score based on RTF structure and Greek character patterns
+          let score = 0;
+          if (decoded.includes('{\\rtf1')) score += 10;
+          if (decoded.includes('\\fonttbl')) score += 5;
+          
+          // Greek character detection
+          const greekPattern = /[Α-Ωα-ωάέήίόύώ]/g;
+          const greekMatches = decoded.match(greekPattern);
+          if (greekMatches) score += greekMatches.length * 0.1;
+          
+          // Penalty for replacement characters
+          const replacementChars = (decoded.match(/�/g) || []).length;
+          score -= replacementChars * 2;
+          
+          if (score > bestResult.score) {
+            bestResult = { data: decoded, encoding: enc, score };
+          }
+        } catch (error) {
+          continue;
+        }
       }
+      
+      rtfData = bestResult.data;
+      encoding = bestResult.encoding;
     }
     
     const text = this.parseRTFToText(rtfData);
@@ -48,7 +76,21 @@ export class RTFProcessor {
   }
   
   private parseRTFToText(rtfData: string): string {
-    return rtfData
+    let text = rtfData;
+    
+    // Handle Unicode escape sequences first (for Greek characters)
+    text = text.replace(/\\u(\d+)\?/g, (match, code) => {
+      const charCode = parseInt(code, 10);
+      return String.fromCharCode(charCode);
+    });
+    
+    // Handle hex escape sequences \'xx
+    text = text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => {
+      const charCode = parseInt(hex, 16);
+      return String.fromCharCode(charCode);
+    });
+    
+    return text
       // Remove RTF header and version
       .replace(/^{\s*\\rtf1[^\\]*/, '')
       // Remove font table
@@ -64,6 +106,8 @@ export class RTFProcessor {
       .replace(/\\viewkind\d+/g, '')
       .replace(/\\uc\d+/g, '')
       .replace(/\\deff\d+/g, '')
+      .replace(/\\deflang\d+/g, '')
+      .replace(/\\deflangfe\d+/g, '')
       // Convert RTF formatting to plain text
       .replace(/\\par\s*/g, '\n')
       .replace(/\\line\s*/g, '\n')
@@ -72,9 +116,18 @@ export class RTFProcessor {
       // Remove font and size commands
       .replace(/\\f\d+/g, '')
       .replace(/\\fs\d+/g, '')
+      .replace(/\\cf\d+/g, '')
+      .replace(/\\cb\d+/g, '')
       // Remove formatting commands
+      .replace(/\\b\s*/g, '') // bold
+      .replace(/\\i\s*/g, '') // italic
+      .replace(/\\ul\s*/g, '') // underline
+      .replace(/\\b0\s*/g, '') // bold off
+      .replace(/\\i0\s*/g, '') // italic off
+      .replace(/\\ul0\s*/g, '') // underline off
+      // Remove remaining control words
       .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
-      // Remove control characters
+      // Remove control characters but preserve Greek characters
       .replace(/\\[^a-zA-Z\s]/g, '')
       // Clean up braces
       .replace(/[{}]/g, '')
@@ -82,10 +135,9 @@ export class RTFProcessor {
       .replace(/\s+/g, ' ')
       .replace(/\n\s+/g, '\n')
       .replace(/\s+\n/g, '\n')
-      // Unescape special characters
-      .replace(/\\\\/g, '\\')
-      .replace(/\\'/g, "'")
-      .replace(/\\"/g, '"')
+      .replace(/^\s+|\s+$/gm, '') // trim each line
+      // Final cleanup
+      .replace(/\n{3,}/g, '\n\n') // max 2 consecutive newlines
       .trim();
   }
   
