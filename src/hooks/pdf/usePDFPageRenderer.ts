@@ -55,7 +55,7 @@ export const usePDFPageRenderer = () => {
     
     onCanvasReady(canvas);
 
-    // Extract text content and prices
+    // Extract text content and prices with real detection
     let textContent = '';
     let prices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
 
@@ -68,14 +68,38 @@ export const usePDFPageRenderer = () => {
 
       textContent = textItems;
 
-      // Extract prices from this page
-      const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
-      prices = priceMatches.map((match, index) => ({
-        value: parseFloat(match.replace(',', '.')),
-        x: 450 + (index * 30),
-        y: 650 - index * 25,
-        pageIndex: pageNum - 1
-      }));
+      // Real price detection using enhanced patterns
+      const pricePatterns = [
+        /€\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g,
+        /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/g,
+        /\b(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\b/g,
+        /€\s*(\d+)/g,
+        /(\d+)\s*€/g
+      ];
+
+      const foundPrices = new Set<number>();
+      
+      pricePatterns.forEach((pattern, patternIndex) => {
+        const regex = new RegExp(pattern.source, pattern.flags);
+        let match;
+        
+        while ((match = regex.exec(textItems)) !== null) {
+          const priceStr = match[1] || match[0];
+          const cleanedPrice = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
+          const value = parseFloat(cleanedPrice);
+          
+          if (!isNaN(value) && value > 0 && value < 100000 && !foundPrices.has(value)) {
+            foundPrices.add(value);
+            prices.push({
+              value,
+              x: 450 + (prices.length * 30),
+              y: 650 - prices.length * 25,
+              pageIndex: pageNum - 1
+            });
+          }
+        }
+      });
+
     } catch (textError) {
       console.warn(`Failed to extract text from page ${pageNum}:`, textError);
     }

@@ -38,12 +38,12 @@ export const HybridPDFViewer = ({
 
   if (!pdfFile) {
     return (
-      <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
-        <div className="text-center text-muted-foreground">
-          <p className="text-lg">Δεν έχει επιλεχθεί αρχείο</p>
+      <div className="w-full h-full flex items-center justify-center min-h-[600px] bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '297mm' }}>
+        <div className="text-center text-muted-foreground p-8">
+          <p className="text-lg">📄 Δεν έχει επιλεχθεί αρχείο</p>
           <p className="text-sm">Επιλέξτε ένα PDF ή RTF για να ξεκινήσετε</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
@@ -51,6 +51,18 @@ export const HybridPDFViewer = ({
 
   return (
     <div className="w-full bg-background py-8">
+      {/* Zoom Controls */}
+      {pdfDoc && (
+        <div className="flex justify-center mb-4">
+          <PDFZoomControls
+            scale={scale}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            pageCount={pdfDoc.numPages}
+          />
+        </div>
+      )}
+
       {error && !useNativeFallback && (
         <Alert className="mx-auto mb-6 max-w-4xl">
           <AlertTriangle className="h-4 w-4" />
@@ -64,13 +76,16 @@ export const HybridPDFViewer = ({
       <div className="flex flex-col items-center">
         {/* Enhanced Loading State */}
         {loading && (
-          <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '400px' }}>
+          <div className="bg-white shadow-2xl border border-border rounded-lg" style={{ width: '210mm', minHeight: '297mm' }}>
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-4 p-8">
                 <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
                 <div className="space-y-2">
-                  <p className="text-lg font-medium text-foreground">Φόρτωση αρχείου...</p>
-                  <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
+                  <p className="text-lg font-medium text-foreground">🔄 Φόρτωση PDF...</p>
+                  <p className="text-sm text-muted-foreground">Ανάλυση περιεχομένου και ανίχνευση τιμών</p>
+                  <div className="w-64 h-2 bg-muted rounded-full mx-auto">
+                    <div className="h-2 bg-primary rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                  </div>
                 </div>
               </div>
             </div>
