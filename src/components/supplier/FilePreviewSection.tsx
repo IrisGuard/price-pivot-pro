@@ -32,12 +32,27 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
         />
       </div>
 
-      {/* Note: Control Panel is now embedded in the PDF itself as the last page */}
-      <div className="w-full bg-gray-100 border-t py-4">
-        <div className="flex justify-center">
-          <div className="text-center text-sm text-muted-foreground">
-            <p>📄 Το Panel Ελέγχου είναι ενσωματωμένο στο PDF ως τελευταία σελίδα</p>
-            <p>Ο πελάτης μπορεί να επεξεργαστεί τα πεδία απευθείας στο PDF</p>
+      {/* Control Panel - Aligned with PDF Viewer */}
+      <div className="w-full bg-gray-50 border-t">
+        <div className="flex justify-center py-6">
+          <div className="w-full max-w-4xl px-6">
+            <ProfessionalControlPanel 
+              pageWidth={595} // A4 width
+              onPercentageChange={(percentage) => {
+                console.log('Percentage change:', percentage);
+              }}
+              onBannerChange={(file) => {
+                console.log('Banner change:', file);
+              }}
+              onCustomerDataChange={(data) => {
+                console.log('Customer data change:', data);
+              }}
+              onExportCleanPDF={async () => {
+                console.log('Export clean PDF requested');
+                // Basic export functionality
+                window.print();
+              }}
+            />
           </div>
         </div>
       </div>
