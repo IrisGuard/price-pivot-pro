@@ -39,9 +39,9 @@ export const usePDFLoader = (pdfFile: File | null) => {
           throw new Error(`File too large: ${Math.round(pdfFile.size / 1024 / 1024)}MB > ${Math.round(config.maxFileSize / 1024 / 1024)}MB`);
         }
         
-        // Global 5-second timeout for PDF loading
+        // Production timeout - 15 seconds for reliable loading
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('PDF φόρτωση timeout μετά από 5 δευτερόλεπτα')), 5000);
+          setTimeout(() => reject(new Error('PDF φόρτωση timeout - παρακαλώ δοκιμάστε ξανά')), 15000);
         });
 
         const result = await Promise.race([
@@ -54,10 +54,11 @@ export const usePDFLoader = (pdfFile: File | null) => {
               loadingTask = pdfjsLib.getDocument({ 
                 data: arrayBuffer,
                 verbosity: pdfjsLib.VerbosityLevel.ERRORS,
-                disableAutoFetch: false,
-                disableStream: false,
+                disableAutoFetch: true,
+                disableStream: true,
                 useSystemFonts: true,
-                useWorkerFetch: false
+                useWorkerFetch: false,
+                stopAtErrors: false
               });
               
               const doc = await loadingTask.promise;

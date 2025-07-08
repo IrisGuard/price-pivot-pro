@@ -61,9 +61,9 @@ export const UniversalFileProcessor = ({
     setIsProcessing(true);
     setProcessingResult(null);
 
-    // Global 10-second timeout for all file operations
+    // Production timeout - 20 seconds for large files
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Η φόρτωση του αρχείου διήρκησε πάρα πολύ. Παρακαλώ δοκιμάστε ξανά.')), 10000);
+      setTimeout(() => reject(new Error('Αρχείο δεν φορτώνει - δοκιμάστε διαφορετικό αρχείο')), 20000);
     });
 
     try {

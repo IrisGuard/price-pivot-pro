@@ -10,11 +10,10 @@ export const useRTFToPDFConverter = () => {
 
     
     
-    // ΦΑΣΗ 1: Enhanced RTF Processing with Format Preservation
+    // Simple RTF Processing with immediate fallback
     try {
-      const { RTFProcessor } = await import('@/lib/rtf/rtfProcessor');
-      const processor = new RTFProcessor();
-      const result = await processor.processRTFFile(file);
+      // Quick RTF text extraction without complex imports
+      const rtfContent = await file.text();
       
       // Create A4 document with proper margins
       const pdfDoc = await PDFDocument.create();
@@ -33,7 +32,14 @@ export const useRTFToPDFConverter = () => {
         italic: await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
       };
       
-      const plainText = result.text;
+      // Extract plain text from RTF
+      const plainText = rtfContent
+        .replace(/^{\s*\\rtf1.*?(?=\\)/g, '')
+        .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
+        .replace(/[{}]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
       const lines = processTextWithFormating(plainText, contentWidth, fonts.regular, 12);
       
       // Create pages as needed
