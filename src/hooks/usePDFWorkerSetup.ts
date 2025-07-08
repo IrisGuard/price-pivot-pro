@@ -3,20 +3,23 @@ import * as pdfjsLib from 'pdfjs-dist';
 export const usePDFWorkerSetup = () => {
   const setupPDFWorker = () => {
     if (typeof pdfjsLib.GlobalWorkerOptions !== 'undefined') {
-      // Production-ready worker setup with environment detection
+      // Production-ready worker setup with CORS-friendly sources
       const isProduction = import.meta.env.PROD;
       
       if (isProduction) {
-        // Use CDN for production hosting stability
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
+        // Use jsdelivr CDN which has better CORS support than unpkg
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
       } else {
-        // Development: try local first, fallback to CDN
+        // Development: use local worker first, then fallback to jsdelivr
         try {
           pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
         } catch (error) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
+          console.warn('Local PDF worker failed, using CDN fallback');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
         }
       }
+      
+      console.log('PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
     }
   };
 

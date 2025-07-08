@@ -22,5 +22,13 @@ export default defineConfig(({ mode }) => ({
   assetsInclude: ['**/*.worker.js'],
   optimizeDeps: {
     exclude: ['pdfjs-dist']
+  },
+  worker: {
+    format: 'es',
+    rollupOptions: {
+      output: {
+        entryFileNames: '[name].js'
+      }
+    }
   }
 }));
