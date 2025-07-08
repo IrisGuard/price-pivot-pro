@@ -359,19 +359,23 @@ export const PDFEditingPanel = ({
               <Button 
                 onClick={() => onCleanExport(customerData)} 
                 disabled={isProcessing}
-                variant="outline"
-                className="w-full h-10"
+                variant="secondary"
+                className="w-full h-10 bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600"
                 size="lg"
               >
                 <FileDown className="h-4 w-4 mr-2" />
-                ΕΞΑΓΩΓΗ ΚΑΘΑΡΟΥ PDF
+                ΕΞΑΓΩΓΗ ΕΠΑΓΓΕΛΜΑΤΙΚΟΥ PDF
               </Button>
             )}
           </div>
           
-          <div className="text-xs text-muted-foreground text-center">
-            Το PDF θα περιέχει ενσωματωμένες λειτουργίες JavaScript<br/>
-            για διαδραστική επεξεργασία από τον πελάτη
+          <div className="text-xs text-muted-foreground text-center space-y-1">
+            <div>
+              <strong>Σφραγισμένο PDF:</strong> Περιέχει διαδραστικά elements για επεξεργασία
+            </div>
+            <div>
+              <strong>Επαγγελματικό PDF:</strong> Καθαρή προσφορά έτοιμη για αποστολή
+            </div>
           </div>
         </div>
       </CardContent>

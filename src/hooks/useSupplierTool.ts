@@ -17,7 +17,7 @@ export const useSupplierTool = () => {
   const [currentPrices, setCurrentPrices] = useState<PriceData[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const { createInteractivePDF } = usePDFProcessor();
+  const { createInteractivePDF, createCleanPDF } = usePDFProcessor();
 
   const handleFactoryFileChange = (file: File | null) => {
     if (!file) {
@@ -85,6 +85,30 @@ export const useSupplierTool = () => {
     }
   };
 
+  const handleCreateCleanQuotationFromEditor = async (bannerFile?: File | null, customerData?: any) => {
+    if (!factoryFile) {
+      toast({
+        title: "Σφάλμα",
+        description: "Παρακαλώ επιλέξτε αρχείο εργοστασίου",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      await createCleanPDF({
+        factoryFile,
+        detectedPrices,
+        currentPrices,
+        bannerFile,
+        customerData
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handleCreateQuotation = async () => {
     if (!factoryFile) {
       toast({
@@ -133,6 +157,7 @@ export const useSupplierTool = () => {
     handlePriceUpdate,
     handleOpenEditor,
     handleCreateQuotationFromEditor,
+    handleCreateCleanQuotationFromEditor,
     handleCreateQuotation,
   };
 };

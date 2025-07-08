@@ -163,6 +163,73 @@ export class InteractivePDFProcessor {
     }
   }
 
+  private async addEnhancedCustomerData(pdfDoc: PDFDocument, customerData: any): Promise<void> {
+    try {
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const { width, height } = firstPage.getSize();
+      
+      // Add professional customer data header box
+      const boxHeight = 60;
+      const boxY = height - 220; // Below banner area
+      
+      // Draw background box
+      firstPage.drawRectangle({
+        x: 20,
+        y: boxY,
+        width: width - 40,
+        height: boxHeight,
+        color: rgb(0.96, 0.97, 0.98),
+        borderColor: rgb(0.85, 0.87, 0.89),
+        borderWidth: 1
+      });
+      
+      // Customer data in professional layout
+      const customerInfo = [
+        { label: 'ΠΕΛΑΤΗΣ:', value: customerData.name || '', x: 40 },
+        { label: 'ΕΠΑΓΓΕΛΜΑ:', value: customerData.profession || '', x: 200 },
+        { label: 'Α.Φ.Μ.:', value: customerData.taxId || '', x: 360 },
+        { label: 'ΤΗΛ.:', value: customerData.phone || '', x: 460 }
+      ];
+      
+      customerInfo.forEach(({ label, value, x }) => {
+        if (value.trim()) {
+          // Label
+          firstPage.drawText(label, {
+            x: x,
+            y: boxY + 35,
+            size: 8,
+            color: rgb(0.4, 0.4, 0.4)
+          });
+          
+          // Value
+          firstPage.drawText(value, {
+            x: x,
+            y: boxY + 20,
+            size: 10,
+            color: rgb(0, 0, 0)
+          });
+        }
+      });
+      
+      // Also add footer for additional reference
+      const lastPage = pages[pages.length - 1];
+      const footerY = 30;
+      
+      const compactInfo = `Προσφορά για: ${customerData.name || 'N/A'} • ${customerData.profession || 'N/A'} • ΑΦΜ: ${customerData.taxId || 'N/A'} • Τηλ: ${customerData.phone || 'N/A'}`;
+      
+      lastPage.drawText(compactInfo, {
+        x: 50,
+        y: footerY,
+        size: 8,
+        color: rgb(0.5, 0.5, 0.5)
+      });
+      
+    } catch (error) {
+      console.warn('Enhanced customer data addition failed:', error);
+    }
+  }
+
   async createSealedQuotationPDF(options: InteractivePDFOptions): Promise<Uint8Array> {
     const { factoryPdfBytes, percentage = 0, customerData, detectedPrices } = options;
     let { bannerImageBytes } = options;
@@ -195,7 +262,7 @@ export class InteractivePDFProcessor {
       
       // Add customer data if provided
       if (customerData) {
-        await this.addCustomerData(this.pdfDoc, customerData);
+        await this.addEnhancedCustomerData(this.pdfDoc, customerData);
       }
       
       // Add interactive control panel
@@ -212,6 +279,58 @@ export class InteractivePDFProcessor {
       const fallbackDoc = await PDFDocument.load(factoryPdfBytes);
       const fallbackBytes = await fallbackDoc.save();
       console.log('⚠️ Returning fallback PDF:', fallbackBytes.length, 'bytes');
+      return fallbackBytes;
+    }
+  }
+
+  async createCleanQuotationPDF(options: InteractivePDFOptions): Promise<Uint8Array> {
+    const { factoryPdfBytes, percentage = 0, customerData, detectedPrices } = options;
+    let { bannerImageBytes } = options;
+    
+    try {
+      // Load default EUROPLAST banner if none provided
+      if (!bannerImageBytes) {
+        try {
+          const response = await fetch('/europlast-banner.png');
+          const arrayBuffer = await response.arrayBuffer();
+          bannerImageBytes = new Uint8Array(arrayBuffer);
+        } catch (error) {
+          console.warn('Could not load default banner:', error);
+        }
+      }
+      
+      // Load the factory PDF
+      this.pdfDoc = await PDFDocument.load(factoryPdfBytes);
+      this.form = this.pdfDoc.getForm();
+
+      // Replace banner with supplier's banner (if available)
+      if (bannerImageBytes) {
+        await this.replaceBanner(this.pdfDoc, bannerImageBytes);
+      }
+      
+      // Apply price changes if detected prices exist (including 0% for reset)
+      if (detectedPrices && detectedPrices.length > 0) {
+        await this.applyPriceChanges(this.pdfDoc, detectedPrices, percentage);
+      }
+      
+      // Add customer data if provided (enhanced for clean export)
+      if (customerData) {
+        await this.addEnhancedCustomerData(this.pdfDoc, customerData);
+      }
+      
+      // NO CONTROL PANEL for clean export
+      
+      const pdfBytes = await this.pdfDoc.save();
+      console.log('✅ Clean PDF created successfully:', pdfBytes.length, 'bytes');
+      return pdfBytes;
+      
+    } catch (error) {
+      console.error('❌ Clean PDF Processing Error:', error);
+      
+      // Fallback: Return original PDF with minimal modifications
+      const fallbackDoc = await PDFDocument.load(factoryPdfBytes);
+      const fallbackBytes = await fallbackDoc.save();
+      console.log('⚠️ Returning fallback clean PDF:', fallbackBytes.length, 'bytes');
       return fallbackBytes;
     }
   }

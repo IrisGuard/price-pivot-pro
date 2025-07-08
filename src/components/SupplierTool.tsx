@@ -17,6 +17,7 @@ const SupplierTool = () => {
     handlePricesDetected,
     handlePriceUpdate,
     handleCreateQuotationFromEditor,
+    handleCreateCleanQuotationFromEditor,
     handleCreateQuotation,
   } = useSupplierTool();
 
@@ -28,6 +29,7 @@ const SupplierTool = () => {
         onPricesDetected={handlePricesDetected}
         onPriceUpdate={handlePriceUpdate}
         onExportPDF={handleCreateQuotationFromEditor}
+        onCleanExport={handleCreateCleanQuotationFromEditor}
         onBack={() => setShowEditor(false)}
         isProcessing={isProcessing}
       />
