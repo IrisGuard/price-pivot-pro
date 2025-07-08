@@ -5,6 +5,7 @@ interface PDFCanvasRendererProps {
   pdfDoc: pdfjsLib.PDFDocumentProxy | null;
   scale: number;
   loading: boolean;
+  detectedPrices?: Array<{ value: number; x: number; y: number; pageIndex: number }>;
   currentPageIndex?: number;
   onTextExtracted?: (text: string) => void;
   onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
@@ -15,6 +16,7 @@ export const PDFCanvasRenderer = ({
   pdfDoc, 
   scale, 
   loading, 
+  detectedPrices,
   onTextExtracted, 
   onPricesDetected,
   onRenderComplete
@@ -22,6 +24,7 @@ export const PDFCanvasRenderer = ({
   const { containerRef } = usePDFCanvasRenderer({
     pdfDoc,
     scale,
+    detectedPrices,
     onTextExtracted,
     onPricesDetected,
     onRenderComplete

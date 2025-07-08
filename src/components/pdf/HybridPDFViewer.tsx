@@ -93,6 +93,7 @@ export const HybridPDFViewer = ({
             pdfDoc={pdfDoc}
             scale={scale}
             loading={false}
+            detectedPrices={detectedPrices}
             onTextExtracted={onTextExtracted}
             onPricesDetected={onPricesDetected}
             onRenderComplete={(success) => {

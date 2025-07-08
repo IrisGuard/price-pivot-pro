@@ -4,6 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 interface PDFCanvasRendererOptions {
   pdfDoc: pdfjsLib.PDFDocumentProxy | null;
   scale: number;
+  detectedPrices?: Array<{ value: number; x: number; y: number; pageIndex: number }>;
   currentPageIndex?: number;
   onTextExtracted?: (text: string) => void;
   onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
@@ -11,7 +12,7 @@ interface PDFCanvasRendererOptions {
 }
 
 export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
-  const { pdfDoc, scale, currentPageIndex = -1, onTextExtracted, onPricesDetected, onRenderComplete } = options;
+  const { pdfDoc, scale, detectedPrices, currentPageIndex = -1, onTextExtracted, onPricesDetected, onRenderComplete } = options;
   const containerRef = useRef<HTMLDivElement>(null);
   const lastRenderedRef = useRef<{ pdfDoc: pdfjsLib.PDFDocumentProxy | null; scale: number; numPages: number } | null>(null);
   const canvasesRef = useRef<HTMLCanvasElement[]>([]);
@@ -30,7 +31,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
     onRenderComplete?.(success);
   }, []);
 
-  // Stable re-render check with better comparison
+  // Stable re-render check with better comparison including detectedPrices
   const shouldRender = useMemo(() => {
     if (!pdfDoc || renderingRef.current) return false;
     
@@ -38,8 +39,9 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
     return !current || 
            current.pdfDoc !== pdfDoc || 
            Math.abs(current.scale - scale) > 0.05 || // Increased threshold to prevent micro-updates
-           current.numPages !== pdfDoc.numPages;
-  }, [pdfDoc, scale]);
+           current.numPages !== pdfDoc.numPages ||
+           (detectedPrices && detectedPrices.length > 0); // Force re-render when prices change
+  }, [pdfDoc, scale, detectedPrices]);
 
   // Cleanup function
   const cleanup = useCallback(() => {
