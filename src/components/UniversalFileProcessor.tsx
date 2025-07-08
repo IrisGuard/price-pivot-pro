@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertTriangle, FileText, Mail, Users, FileSpreadsheet } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { OptimizedFileLoader } from '@/components/shared/OptimizedFileLoader';
 
 interface PriceData {
   value: number;
@@ -43,6 +44,7 @@ export const UniversalFileProcessor = ({
 }: UniversalFileProcessorProps) => {
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showOptimizedLoader, setShowOptimizedLoader] = useState(false);
   const { convertRTFToPDF } = useRTFToPDFConverter();
   const { toast } = useToast();
 
@@ -58,48 +60,39 @@ export const UniversalFileProcessor = ({
   const processFile = async () => {
     if (!file) return;
 
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
+    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+    const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
+    const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
+
+    // Immediate rejection for unsupported files
+    if (!isPDF && !isRTF && !isCSV && !isExcel) {
+      toast({
+        title: "❌ Μη υποστηριζόμενο αρχείο",
+        description: "Υποστηρίζονται μόνο PDF, RTF, CSV και Excel αρχεία",
+        variant: "destructive",
+      });
+      setProcessingResult({ type: 'pdf', error: 'Μη υποστηριζόμενος τύπος αρχείου' });
+      return;
+    }
+
+    // For larger files or complex processing, show optimized loader
+    if (file.size > 2 * 1024 * 1024 || isRTF) { // 2MB+ or RTF files
+      setShowOptimizedLoader(true);
+      return;
+    }
+
+    // Fast path for smaller files
     setIsProcessing(true);
     setProcessingResult(null);
 
     try {
-      const fileExtension = file.name.toLowerCase().split('.').pop();
-      const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
-      const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
-      const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
-      const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
-
       console.log('🔍 Processing file:', file.name, 'Type:', file.type);
 
-      // Immediate rejection for unsupported files
-      if (!isPDF && !isRTF && !isCSV && !isExcel) {
-        toast({
-          title: "❌ Μη υποστηριζόμενο αρχείο",
-          description: "Υποστηρίζονται μόνο PDF, RTF, CSV και Excel αρχεία",
-          variant: "destructive",
-        });
-        setProcessingResult({ type: 'pdf', error: 'Μη υποστηριζόμενος τύπος αρχείου' });
-        return;
-      }
-
-      // Parallel processing with independent timeouts
       if (isPDF) {
         console.log('📄 Processing PDF file...');
         setProcessingResult({ type: 'pdf', content: file });
-        
-      } else if (isRTF) {
-        console.log('📝 Converting RTF to PDF...');
-        const pdfBytes = await convertRTFToPDF(file);
-        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-          type: 'application/pdf'
-        });
-        
-        setProcessingResult({ type: 'rtf', content: pdfFile });
-        
-        toast({
-          title: "✅ RTF επεξεργασία",
-          description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
-        });
         
       } else if (isCSV || isExcel) {
         console.log('📊 Processing spreadsheet file...');
@@ -137,6 +130,28 @@ export const UniversalFileProcessor = ({
     }
   };
 
+  const handleOptimizedFileComplete = async (result: any) => {
+    setShowOptimizedLoader(false);
+    
+    const fileExtension = file!.name.toLowerCase().split('.').pop();
+    const isRTF = fileExtension === 'rtf' || file!.type === 'text/rtf';
+    
+    if (isRTF) {
+      setProcessingResult({ type: 'rtf', content: result });
+      toast({
+        title: "✅ RTF επεξεργασία",
+        description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
+      });
+    } else {
+      setProcessingResult({ type: 'pdf', content: file! });
+    }
+  };
+
+  const handleOptimizedFileCancel = () => {
+    setShowOptimizedLoader(false);
+    setProcessingResult(null);
+  };
+
   const extractTextFromPDF = async (file: File): Promise<string> => {
     // This would need to be implemented with PDF.js
     // For now, return empty string
@@ -152,6 +167,22 @@ export const UniversalFileProcessor = ({
           <p className="text-sm">Επιλέξτε ένα PDF, RTF, CSV ή Excel για να ξεκινήσετε</p>
         </div>
       </Card>
+    );
+  }
+
+  // Show optimized loader for large files
+  if (showOptimizedLoader && file) {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+    
+    return (
+      <OptimizedFileLoader
+        file={file}
+        processor={isRTF ? convertRTFToPDF : async (file) => file}
+        onComplete={handleOptimizedFileComplete}
+        onCancel={handleOptimizedFileCancel}
+        className="w-full max-w-md mx-auto"
+      />
     );
   }
 

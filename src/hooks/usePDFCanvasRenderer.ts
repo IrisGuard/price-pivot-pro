@@ -137,7 +137,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
 
               const renderPromise = page.render(renderContext).promise;
               const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Render timeout')), 15000)
+                setTimeout(() => reject(new Error('Render timeout')), 10000) // Reduced to 10s
               );
 
               await Promise.race([renderPromise, timeoutPromise]);

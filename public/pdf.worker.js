@@ -30,11 +30,11 @@ self.postMessage({
     
     const src = sources[attempts++];
     
-    // 3-second timeout per source
+    // 2-second timeout per source for faster fallback
     const timeoutId = setTimeout(() => {
       console.warn('⚠️ PDF Worker: Timeout loading', src);
       tryLoad();
-    }, 3000);
+    }, 2000);
     
     try {
       importScripts(src);
