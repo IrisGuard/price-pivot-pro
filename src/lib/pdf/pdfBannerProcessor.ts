@@ -1,11 +1,25 @@
-import { PDFDocument, PDFImage, PageSizes } from 'pdf-lib';
+import { PDFDocument, PDFImage, PageSizes, rgb } from 'pdf-lib';
 
 export class PDFBannerProcessor {
   async replaceBanner(pdfDoc: PDFDocument, bannerImageBytes: Uint8Array): Promise<void> {
     try {
-      console.log('🖼️ Processing banner image for PDF...');
+      console.log('🖼️ Replacing banner in PDF...');
       
-      // Determine image format and embed
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const { width, height } = firstPage.getSize();
+      
+      // First, clear existing banner area (remove Bulgarian banner)
+      const bannerClearHeight = 150;
+      firstPage.drawRectangle({
+        x: 0,
+        y: height - bannerClearHeight,
+        width: width,
+        height: bannerClearHeight,
+        color: rgb(1, 1, 1) // White background to cover existing banner
+      });
+      
+      // Determine image format and embed new banner
       let bannerImage: PDFImage;
       const imageHeader = Array.from(bannerImageBytes.slice(0, 4));
       
@@ -18,20 +32,18 @@ export class PDFBannerProcessor {
         return;
       }
       
-      const pages = pdfDoc.getPages();
-      const firstPage = pages[0];
-      const { width, height } = firstPage.getSize();
-      
+      // Place new banner with exact document width (1:1 ratio as requested)
+      const bannerWidth = width;
       const bannerHeight = Math.min(120, height * 0.15);
-      const bannerWidth = width - 40;
       
+      // Maintain aspect ratio but fit to document width
       const imageAspectRatio = bannerImage.width / bannerImage.height;
       let drawWidth = bannerWidth;
-      let drawHeight = bannerHeight;
+      let drawHeight = bannerWidth / imageAspectRatio;
       
-      if (imageAspectRatio > bannerWidth / bannerHeight) {
-        drawHeight = drawWidth / imageAspectRatio;
-      } else {
+      // If height is too large, scale down
+      if (drawHeight > bannerHeight) {
+        drawHeight = bannerHeight;
         drawWidth = drawHeight * imageAspectRatio;
       }
       
@@ -42,10 +54,10 @@ export class PDFBannerProcessor {
         x, y, width: drawWidth, height: drawHeight,
       });
       
-      console.log(`✅ Banner placed: ${drawWidth}x${drawHeight} at (${x}, ${y})`);
+      console.log(`✅ Banner replaced: ${drawWidth}x${drawHeight} at (${x}, ${y})`);
       
     } catch (error) {
-      console.error('❌ Error processing banner:', error);
+      console.error('❌ Error replacing banner:', error);
     }
   }
 }
