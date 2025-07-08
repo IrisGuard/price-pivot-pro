@@ -3,7 +3,7 @@ import SupplierTool from "@/components/SupplierTool";
 const Index = () => {
   return (
     <div>
-      {/* Phase 1 Complete - Deploy Trigger v1.0 */}
+      {/* Phase 1 Complete - Deploy Trigger v1.1 - Auto GitHub Actions */}
       <SupplierTool />
     </div>
   );
