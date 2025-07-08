@@ -15,7 +15,7 @@ interface EditorModeProps {
   detectedPrices: PriceData[];
   onPricesDetected: (prices: PriceData[]) => void;
   onPriceUpdate: (prices: PriceData[]) => void;
-  onExportPDF: (bannerFile?: File | null) => void;
+  onExportPDF: (bannerFile?: File | null, customerData?: any) => void;
   onBack: () => void;
   isProcessing: boolean;
 }
@@ -31,8 +31,13 @@ export const EditorMode = ({
 }: EditorModeProps) => {
   const { bannerState, loadBannerFile, removeBanner } = useBannerReplacement();
 
-  const handleExportPDF = () => {
-    onExportPDF(bannerState.currentBanner);
+  const handleExportPDF = (customerData?: any) => {
+    onExportPDF(bannerState.currentBanner, customerData);
+  };
+
+  const handleCleanExport = (customerData?: any) => {
+    // Clean export without control panel - future implementation
+    onExportPDF(bannerState.currentBanner, customerData);
   };
   return (
     <div className="h-screen flex flex-col bg-background">
@@ -67,6 +72,7 @@ export const EditorMode = ({
             detectedPrices={detectedPrices}
             onPriceUpdate={onPriceUpdate}
             onExportPDF={handleExportPDF}
+            onCleanExport={handleCleanExport}
             isProcessing={isProcessing}
             bannerState={bannerState}
             onBannerLoad={loadBannerFile}

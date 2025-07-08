@@ -61,7 +61,7 @@ export const useSupplierTool = () => {
     setShowEditor(true);
   };
 
-  const handleCreateQuotationFromEditor = async (bannerFile?: File | null) => {
+  const handleCreateQuotationFromEditor = async (bannerFile?: File | null, customerData?: any) => {
     if (!factoryFile) {
       toast({
         title: "Σφάλμα",
@@ -77,7 +77,8 @@ export const useSupplierTool = () => {
         factoryFile,
         detectedPrices,
         currentPrices,
-        bannerFile
+        bannerFile,
+        customerData
       });
     } finally {
       setIsProcessing(false);

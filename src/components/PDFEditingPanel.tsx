@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Download, RefreshCw, Palette, Upload, X, Image } from 'lucide-react';
+import { Download, RefreshCw, Palette, Upload, X, Image, User, FileDown } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { BannerState } from '@/hooks/useBannerReplacement';
+import { useCustomerDataIntegration, CustomerData } from '@/hooks/useCustomerDataIntegration';
 
 interface PriceData {
   value: number;
@@ -20,7 +21,8 @@ interface PriceData {
 interface PDFEditingPanelProps {
   detectedPrices: PriceData[];
   onPriceUpdate: (prices: PriceData[]) => void;
-  onExportPDF: () => void;
+  onExportPDF: (customerData?: CustomerData) => void;
+  onCleanExport?: (customerData?: CustomerData) => void;
   isProcessing: boolean;
   bannerState: BannerState;
   onBannerLoad: (file: File) => void;
@@ -31,6 +33,7 @@ export const PDFEditingPanel = ({
   detectedPrices, 
   onPriceUpdate, 
   onExportPDF, 
+  onCleanExport,
   isProcessing,
   bannerState,
   onBannerLoad,
@@ -39,6 +42,7 @@ export const PDFEditingPanel = ({
   const [percentage, setPercentage] = useState<number>(0);
   const [customPrices, setCustomPrices] = useState<PriceData[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { customerData, updateCustomerData } = useCustomerDataIntegration();
 
   const handleBannerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -274,28 +278,96 @@ export const PDFEditingPanel = ({
 
         <Separator />
 
+        {/* Customer Data Section */}
+        <div className="space-y-4">
+          <Label className="text-sm font-semibold flex items-center gap-2">
+            <User className="h-4 w-4" />
+            Στοιχεία Πελάτη
+          </Label>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="customer-name" className="text-xs">Όνομα Πελάτη</Label>
+              <Input
+                id="customer-name"
+                value={customerData.name}
+                onChange={(e) => updateCustomerData('name', e.target.value)}
+                placeholder="Όνομα πελάτη"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer-profession" className="text-xs">Επάγγελμα</Label>
+              <Input
+                id="customer-profession"
+                value={customerData.profession}
+                onChange={(e) => updateCustomerData('profession', e.target.value)}
+                placeholder="Επάγγελμα"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer-taxid" className="text-xs">Α.Φ.Μ.</Label>
+              <Input
+                id="customer-taxid"
+                value={customerData.taxId}
+                onChange={(e) => updateCustomerData('taxId', e.target.value)}
+                placeholder="ΑΦΜ"
+                className="text-sm"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customer-phone" className="text-xs">Τηλέφωνο</Label>
+              <Input
+                id="customer-phone"
+                value={customerData.phone}
+                onChange={(e) => updateCustomerData('phone', e.target.value)}
+                placeholder="Τηλέφωνο"
+                className="text-sm"
+              />
+            </div>
+          </div>
+        </div>
+
+        <Separator />
+
         {/* Export Section */}
         <div className="space-y-4">
           <Label className="text-sm font-semibold">Εξαγωγή PDF</Label>
           
-          <Button 
-            onClick={onExportPDF} 
-            disabled={isProcessing}
-            className="w-full h-12 text-base font-semibold"
-            size="lg"
-          >
-            {isProcessing ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
-                Δημιουργία PDF...
-              </>
-            ) : (
-              <>
-                <Download className="h-5 w-5 mr-2" />
-                ΔΗΜΙΟΥΡΓΙΑ ΣΦΡΑΓΙΣΜΕΝΟΥ PDF
-              </>
+          <div className="space-y-3">
+            <Button 
+              onClick={() => onExportPDF(customerData)} 
+              disabled={isProcessing}
+              className="w-full h-12 text-base font-semibold"
+              size="lg"
+            >
+              {isProcessing ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full mr-2"></div>
+                  Δημιουργία PDF...
+                </>
+              ) : (
+                <>
+                  <Download className="h-5 w-5 mr-2" />
+                  ΔΗΜΙΟΥΡΓΙΑ ΣΦΡΑΓΙΣΜΕΝΟΥ PDF
+                </>
+              )}
+            </Button>
+            
+            {onCleanExport && (
+              <Button 
+                onClick={() => onCleanExport(customerData)} 
+                disabled={isProcessing}
+                variant="outline"
+                className="w-full h-10"
+                size="lg"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                ΕΞΑΓΩΓΗ ΚΑΘΑΡΟΥ PDF
+              </Button>
             )}
-          </Button>
+          </div>
           
           <div className="text-xs text-muted-foreground text-center">
             Το PDF θα περιέχει ενσωματωμένες λειτουργίες JavaScript<br/>
