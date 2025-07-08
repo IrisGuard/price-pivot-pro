@@ -1,7 +1,6 @@
 import { EditorMode } from "@/components/supplier/EditorMode";
 import { FileUploadSection } from "@/components/supplier/FileUploadSection";
 import { FilePreviewSection } from "@/components/supplier/FilePreviewSection";
-import { TestWorkflow } from "@/components/TestWorkflow";
 import { useSupplierTool } from "@/hooks/useSupplierTool";
 
 const SupplierTool = () => {
@@ -47,11 +46,6 @@ const SupplierTool = () => {
             Δημιουργία προστατευμένου PDF με ενσωματωμένες λειτουργίες τιμολόγησης και παραμετροποίησης
           </p>
         </div>
-      </div>
-
-      {/* Test Workflow - Production Verification */}
-      <div className="flex justify-center py-4">
-        <TestWorkflow />
       </div>
 
       {/* Main Content */}
