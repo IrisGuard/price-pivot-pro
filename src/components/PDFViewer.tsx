@@ -57,15 +57,10 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         // Simplified, reliable PDF.js configuration
         const loadingTask = pdfjsLib.getDocument({ 
           data: arrayBuffer,
-          verbosity: pdfjsLib.VerbosityLevel.ERRORS // Less verbose
+          verbosity: pdfjsLib.VerbosityLevel.ERRORS
         });
         
-        // Set timeout for loading
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('PDF loading timeout')), 10000);
-        });
-        
-        const doc = await Promise.race([loadingTask.promise, timeoutPromise]) as pdfjsLib.PDFDocumentProxy;
+        const doc = await loadingTask.promise;
         console.log('✅ PDF loaded successfully, pages:', doc.numPages);
         
         if (doc.numPages === 0) {
@@ -76,23 +71,8 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         setError(null);
       } catch (error) {
         console.error('❌ PDF.js loading failed:', error);
-        setError('PDF.js loading failed - using browser fallback');
+        // Keep the PDF URL for browser fallback but don't set error
         setPdfDoc(null);
-        
-        // Extract text using fallback method for price detection
-        try {
-          const text = await pdfFile.text();
-          if (onTextExtracted) {
-            onTextExtracted(text);
-          }
-          
-          const detectedPrices = extractPricesFromText(text, 0);
-          if (onPricesDetected && detectedPrices.length > 0) {
-            onPricesDetected(detectedPrices);
-          }
-        } catch (textError) {
-          console.warn('Text extraction also failed:', textError);
-        }
       }
       setLoading(false);
     };
@@ -150,15 +130,6 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         pageCount={pdfDoc?.numPages}
       />
 
-      {/* Error Alert */}
-      {error && (
-        <Alert className="mx-4 mb-4 border-orange-500 bg-orange-50">
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            {error}
-          </AlertDescription>
-        </Alert>
-      )}
 
       <PDFCanvasContainer
         renderedPages={renderedPages}

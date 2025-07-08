@@ -34,20 +34,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
 
   const handleButtonClick = () => {
     console.log('🔘 BUTTON CLICKED - Triggering file input');
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.rtf';
-    input.style.display = 'none';
-    input.onchange = (e) => {
-      const files = (e.target as HTMLInputElement).files;
-      if (files && files.length > 0) {
-        console.log('📁 Direct file selected:', files[0].name);
-        handleFileSelect(files[0]);
-      }
-      document.body.removeChild(input);
-    };
-    document.body.appendChild(input);
-    input.click();
+    fileInputRef.current?.click();
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
