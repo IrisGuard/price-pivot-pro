@@ -136,7 +136,6 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
           <div className="container mx-auto max-w-4xl py-8">
             <ProfessionalControlPanel 
               pageWidth={595} // A4 width
-              isAdminMode={true}
               pdfFile={pdfFile}
               onPercentageChange={(percentage) => {
                 priceDetection.applyPercentageToAllPrices(percentage);

@@ -6,9 +6,11 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Shield, LogOut } from 'lucide-react';
 import { useClientMode } from '@/hooks/useClientMode';
+import { useAdminMode } from '@/hooks/useAdminMode';
 import { cleanPDFExporter } from '@/lib/pdf/cleanPDFExporter';
+import { AdminLoginModal } from './AdminLoginModal';
 
 interface CustomerData {
   name: string;
@@ -19,7 +21,6 @@ interface CustomerData {
 
 interface ProfessionalControlPanelProps {
   pageWidth?: number;
-  isAdminMode?: boolean;
   pdfFile?: File | null;
   onPercentageChange?: (percentage: number) => void;
   onBannerChange?: (file: File) => void;
@@ -29,7 +30,6 @@ interface ProfessionalControlPanelProps {
 
 export const ProfessionalControlPanel = ({ 
   pageWidth = 595, 
-  isAdminMode = false,
   pdfFile,
   onPercentageChange,
   onBannerChange,
@@ -38,6 +38,7 @@ export const ProfessionalControlPanel = ({
 }: ProfessionalControlPanelProps) => {
   const [hideControls, setHideControls] = useState(false);
   const { isClientMode, showControls, toggleClientMode, enterClientMode, enterAdminMode } = useClientMode();
+  const { isAdminMode, showAdminLogin, enterAdminMode: handleAdminLogin, exitAdminMode, toggleAdminLogin } = useAdminMode();
   const [percentage, setPercentage] = useState<string>('');
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: '',
@@ -134,30 +135,55 @@ export const ProfessionalControlPanel = ({
   }
 
   return (
-    <Card 
-      className="bg-white shadow-lg print:shadow-none pdf-control-panel print-hide"
-      style={{ width: pageWidth + 'px', maxWidth: '100%' }}
-    >
-      <div className="p-8 space-y-8">
-        {/* Header with Mode Toggle */}
+    <>
+      <Card 
+        className={`shadow-lg print:shadow-none pdf-control-panel print-hide ${
+          isAdminMode ? 'bg-blue-50 border-blue-200' : 'bg-white'
+        }`}
+        style={{ width: pageWidth + 'px', maxWidth: '100%' }}
+      >
+        <div className="p-8 space-y-8">
+          {/* Header with Mode Toggle */}
         <div className="text-center">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-3xl font-bold text-primary">
-              🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ
+            <h1 className={`text-3xl font-bold ${isAdminMode ? 'text-blue-800' : 'text-primary'}`}>
+              {isAdminMode ? '⚙️ ADMIN - ΠΑΝΕΛ ΕΛΕΓΧΟΥ' : '🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ'}
             </h1>
-            {isAdminMode && (
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              {!isAdminMode && (
                 <Button
-                  variant={isClientMode ? "outline" : "default"}
+                  variant="outline"
                   size="sm"
-                  onClick={toggleClientMode}
-                  className="flex items-center gap-2"
+                  onClick={toggleAdminLogin}
+                  className="flex items-center gap-2 border-blue-300 text-blue-700 hover:bg-blue-50"
                 >
-                  {isClientMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-                  {isClientMode ? "Προβολή Πελάτη" : "Προβολή Admin"}
+                  <Shield className="h-4 w-4" />
+                  Admin
                 </Button>
-              </div>
-            )}
+              )}
+              {isAdminMode && (
+                <>
+                  <Button
+                    variant={isClientMode ? "outline" : "default"}
+                    size="sm"
+                    onClick={toggleClientMode}
+                    className="flex items-center gap-2"
+                  >
+                    {isClientMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    {isClientMode ? "Προβολή Πελάτη" : "Προβολή Admin"}
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={exitAdminMode}
+                    className="flex items-center gap-2"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Έξοδος
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
           <p className="text-muted-foreground">
             {isClientMode 
@@ -186,6 +212,7 @@ export const ProfessionalControlPanel = ({
               value={percentage}
               onChange={(e) => setPercentage(e.target.value)}
               className="w-32"
+              disabled={false} // Always enabled for clients
             />
             <Button onClick={handlePercentageApply} className="bg-green-600 hover:bg-green-700">
               ΕΦΑΡΜΟΓΗ
@@ -215,10 +242,15 @@ export const ProfessionalControlPanel = ({
             <Button 
               onClick={() => bannerInputRef.current?.click()}
               className="bg-blue-600 hover:bg-blue-700"
+              disabled={false} // Always enabled for clients
             >
               ΑΛΛΑΓΗ BANNER
             </Button>
-            <Button variant="destructive" onClick={handleRemoveBanner}>
+            <Button 
+              variant="destructive" 
+              onClick={handleRemoveBanner}
+              disabled={false} // Always enabled for clients
+            >
               ΑΦΑΙΡΕΣΗ BANNER
             </Button>
           </div>
@@ -243,6 +275,7 @@ export const ProfessionalControlPanel = ({
                 value={customerData.name}
                 onChange={(e) => handleCustomerDataUpdate('name', e.target.value)}
                 placeholder="Εισάγετε ονοματεπώνυμο"
+                disabled={false} // Always enabled for clients
               />
             </div>
             <div>
@@ -252,6 +285,7 @@ export const ProfessionalControlPanel = ({
                 value={customerData.profession}
                 onChange={(e) => handleCustomerDataUpdate('profession', e.target.value)}
                 placeholder="Εισάγετε επάγγελμα"
+                disabled={false} // Always enabled for clients
               />
             </div>
             <div>
@@ -261,6 +295,7 @@ export const ProfessionalControlPanel = ({
                 value={customerData.taxId}
                 onChange={(e) => handleCustomerDataUpdate('taxId', e.target.value)}
                 placeholder="Εισάγετε Α.Φ.Μ."
+                disabled={false} // Always enabled for clients
               />
             </div>
             <div>
@@ -270,6 +305,7 @@ export const ProfessionalControlPanel = ({
                 value={customerData.phone}
                 onChange={(e) => handleCustomerDataUpdate('phone', e.target.value)}
                 placeholder="Εισάγετε τηλέφωνο"
+                disabled={false} // Always enabled for clients
               />
             </div>
           </div>
@@ -350,7 +386,14 @@ export const ProfessionalControlPanel = ({
             )}
           </ul>
         </div>
-      </div>
-    </Card>
+        </div>
+      </Card>
+      
+      <AdminLoginModal
+        isOpen={showAdminLogin}
+        onClose={toggleAdminLogin}
+        onAdminLogin={handleAdminLogin}
+      />
+    </>
   );
 };

@@ -38,7 +38,6 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
           <div className="w-full max-w-4xl px-6">
             <ProfessionalControlPanel 
               pageWidth={595} // A4 width
-              isAdminMode={true}
               onPercentageChange={(percentage) => {
                 console.log('Percentage change:', percentage);
               }}

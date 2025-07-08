@@ -139,7 +139,6 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
       {renderedPages.length > 0 && (
         <CleanPDFViewer 
           pageWidth={renderedPages[0]?.width || 595}
-          isAdminMode={true}
           onPercentageChange={(percentage) => {
             // Price modification will be implemented in Phase 3
           }}
