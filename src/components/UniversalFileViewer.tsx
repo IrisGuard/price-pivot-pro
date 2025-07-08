@@ -68,6 +68,7 @@ export const UniversalFileViewer = ({
         <div className="text-center space-y-4">
           <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
           <p className="text-muted-foreground">Μετατροπή RTF σε PDF...</p>
+          <p className="text-xs text-muted-foreground">Παρακαλώ περιμένετε...</p>
         </div>
       </div>
     );

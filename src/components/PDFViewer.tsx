@@ -63,7 +63,7 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         setPdfDoc(doc);
         setError(null);
       } catch (error) {
-        // Keep the PDF URL for browser fallback but don't set error
+        setError('Σφάλμα φόρτωσης PDF. Χρήση εναλλακτικής προβολής.');
         setPdfDoc(null);
       }
       setLoading(false);
@@ -121,6 +121,12 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         pageCount={pdfDoc?.numPages}
       />
 
+      {error && (
+        <Alert className="mx-4 mb-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <PDFCanvasContainer
         renderedPages={renderedPages}
