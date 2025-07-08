@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { pdfRenderer } from './pdf/PDFRenderer';
+import { textExtractor } from './pdf/TextExtractor';
+import { priceDetector } from './pdf/PriceDetector';
+import type { DetectedPrice } from './pdf/PriceDetector';
 
 // PDF.js worker setup
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
@@ -13,7 +17,7 @@ interface EnhancedPDFViewerProps {
   file: File | null;
   title?: string;
   onTextExtracted?: (text: string) => void;
-  onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
+  onPricesDetected?: (prices: DetectedPrice[]) => void;
 }
 
 export const EnhancedPDFViewer = ({ 
@@ -30,88 +34,32 @@ export const EnhancedPDFViewer = ({
   const [renderedPages, setRenderedPages] = useState<HTMLCanvasElement[]>([]);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
-  const extractPricesFromText = useCallback((text: string, pageIndex: number) => {
-    const pricePatterns = [
-      /€\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g,
-      /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/g,
-      /(?:^|\s)(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})(?:\s|$)/g,
-      /€\s*(\d+)/g,
-      /(\d+)\s*€/g,
-      /(?:price|cost|total|amount|τιμή|κόστος|σύνολο)\s*:?\s*(\d+[.,]?\d*)/gi,
-      /(?:^|\s)(\d{2,}[.,]\d{1,2})(?:\s|$)/g
-    ];
-
-    const prices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
-    const foundValues = new Set<number>();
-    
-    pricePatterns.forEach((pattern, patternIndex) => {
-      const regex = new RegExp(pattern.source, pattern.flags);
-      let match;
-      while ((match = regex.exec(text)) !== null) {
-        const priceStr = match[1] || match[0];
-        const cleanedPrice = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
-        const value = parseFloat(cleanedPrice);
-        
-        if (!isNaN(value) && value > 0 && value < 100000 && !foundValues.has(value)) {
-          foundValues.add(value);
-          prices.push({
-            value,
-            x: 450 + (patternIndex * 30),
-            y: 650 - prices.length * 25,
-            pageIndex
-          });
-        }
-      }
-    });
-
-    return prices.sort((a, b) => a.value - b.value);
-  }, []);
-
-  const renderAllPages = useCallback(async () => {
+  const processAllPages = useCallback(async () => {
     if (!pdfDoc || !containerRef.current) return;
 
     setLoading(true);
     try {
-      const pages: HTMLCanvasElement[] = [];
-      let allText = '';
-      let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
-
-      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-        const page = await pdfDoc.getPage(pageNum);
-        const viewport = page.getViewport({ scale });
-        
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        if (!ctx) continue;
-
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        canvas.className = 'border shadow-sm bg-white mb-4 mx-auto block';
-
-        const renderContext = {
-          canvasContext: ctx,
-          viewport: viewport,
-        };
-
-        await page.render(renderContext).promise;
-        pages.push(canvas);
-
-        // Extract text content
-        const textContent = await page.getTextContent();
-        const pageText = textContent.items
-          .filter((item): item is any => 'str' in item)
-          .map((item: any) => item.str)
-          .join(' ');
-        
-        allText += pageText + '\n';
-
-        // Extract prices from this page
-        const pagePrices = extractPricesFromText(pageText, pageNum - 1);
+      // Extract text from all pages
+      const { text: allText, pageTexts } = await textExtractor.extractTextFromAllPages(pdfDoc);
+      
+      // Detect prices from text
+      let allPrices: DetectedPrice[] = [];
+      pageTexts.forEach((pageText, pageIndex) => {
+        const pagePrices = priceDetector.extractPricesFromText(pageText, pageIndex);
         allPrices = [...allPrices, ...pagePrices];
-      }
+      });
+
+      // Render all pages
+      const pages = await pdfRenderer.renderAllPages(pdfDoc, {
+        scale,
+        onPageRendered: (canvas, pageIndex) => {
+          // Page rendered callback if needed
+        }
+      });
 
       setRenderedPages(pages);
 
+      // Notify parent components
       if (onTextExtracted) {
         onTextExtracted(allText);
       }
@@ -120,11 +68,11 @@ export const EnhancedPDFViewer = ({
         onPricesDetected(allPrices);
       }
     } catch (error) {
-      console.error('Error rendering pages:', error);
+      console.error('Error processing pages:', error);
       setError('Σφάλμα κατά την προβολή του PDF');
     }
     setLoading(false);
-  }, [pdfDoc, scale, onTextExtracted, onPricesDetected, extractPricesFromText]);
+  }, [pdfDoc, scale, onTextExtracted, onPricesDetected]);
 
   useEffect(() => {
     if (!file) {
@@ -170,9 +118,9 @@ export const EnhancedPDFViewer = ({
 
   useEffect(() => {
     if (pdfDoc) {
-      renderAllPages();
+      processAllPages();
     }
-  }, [pdfDoc, renderAllPages]);
+  }, [pdfDoc, processAllPages]);
 
   useEffect(() => {
     if (containerRef.current && renderedPages.length > 0) {
