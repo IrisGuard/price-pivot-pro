@@ -17,31 +17,44 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
 
   const extractPricesFromText = useCallback((text: string) => {
     const pricePatterns = [
-      /€\s*(\d+[.,]\d{2})/g,
-      /(\d+[.,]\d{2})\s*€/g,
+      // European format with euro symbol
+      /€\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g,
+      /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/g,
+      // European format without euro symbol (2 decimals)
+      /(?:^|\s)(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})(?:\s|$)/g,
+      // Simple euro amounts
       /€\s*(\d+)/g,
-      /(\d+)\s*€/g
+      /(\d+)\s*€/g,
+      // Price-like patterns in RTF
+      /(?:price|cost|total|amount|τιμή|κόστος|σύνολο)\s*:?\s*(\d+[.,]?\d*)/gi,
+      // Numbers that look like prices (over 10, with potential decimal)
+      /(?:^|\s)(\d{2,}[.,]\d{1,2})(?:\s|$)/g
     ];
 
     const prices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+    const foundValues = new Set<number>(); // Avoid duplicates
     
-    pricePatterns.forEach(pattern => {
+    pricePatterns.forEach((pattern, patternIndex) => {
+      const regex = new RegExp(pattern.source, pattern.flags);
       let match;
-      while ((match = pattern.exec(text)) !== null) {
-        const priceStr = match[1];
-        const value = parseFloat(priceStr.replace(',', '.'));
-        if (!isNaN(value)) {
+      while ((match = regex.exec(text)) !== null) {
+        const priceStr = match[1] || match[0];
+        const cleanedPrice = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
+        const value = parseFloat(cleanedPrice);
+        
+        if (!isNaN(value) && value > 0 && value < 100000 && !foundValues.has(value)) {
+          foundValues.add(value);
           prices.push({
             value,
-            x: 450 + Math.random() * 50,
-            y: 650 - prices.length * 20,
+            x: 450 + (patternIndex * 30),
+            y: 650 - prices.length * 25,
             pageIndex: 0
           });
         }
       }
     });
 
-    return prices;
+    return prices.sort((a, b) => a.value - b.value);
   }, []);
 
   const parseRTF = useCallback(async (file: File) => {
@@ -50,12 +63,30 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
       const arrayBuffer = await file.arrayBuffer();
       const rtfData = new TextDecoder('utf-8').decode(arrayBuffer);
       
-      // Simple RTF to text conversion (basic implementation)
-      const textContent = rtfData
-        .replace(/\\[a-zA-Z]+\d*\s?/g, '') // Remove RTF control words
-        .replace(/[{}]/g, '') // Remove braces
-        .replace(/\\\\/g, '\\') // Unescape backslashes
-        .replace(/\\'/g, "'") // Unescape quotes
+      // Enhanced RTF to text conversion
+      let textContent = rtfData
+        // Remove RTF header and version info
+        .replace(/^{\s*\\rtf1.*?(?=\\)/g, '')
+        // Remove font table
+        .replace(/\\fonttbl[^}]*}/g, '')
+        // Remove color table
+        .replace(/\\colortbl[^}]*}/g, '')
+        // Remove style sheet
+        .replace(/\\stylesheet[^}]*}/g, '')
+        // Remove info group
+        .replace(/\\info[^}]*}/g, '')
+        // Remove RTF control words and numbers
+        .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
+        // Remove remaining control sequences
+        .replace(/\\[^a-zA-Z\s]/g, '')
+        // Remove braces
+        .replace(/[{}]/g, '')
+        // Clean up multiple spaces
+        .replace(/\s+/g, ' ')
+        // Unescape special characters
+        .replace(/\\\\/g, '\\')
+        .replace(/\\'/g, "'")
+        .replace(/\\"/g, '"')
         .trim();
 
       setRtfContent(textContent);
@@ -139,9 +170,19 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
               lineHeight: '1.6'
             }}
           >
-            <pre className="whitespace-pre-wrap font-mono text-sm">
-              {rtfContent}
-            </pre>
+            {rtfContent ? (
+              <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">
+                {rtfContent.split('\n').map((line, index) => (
+                  <div key={index} className="mb-2">
+                    {line.trim() === '' ? <br /> : line}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 p-8">
+                <p>Παρακαλώ περιμένετε κατά την επεξεργασία του RTF αρχείου...</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

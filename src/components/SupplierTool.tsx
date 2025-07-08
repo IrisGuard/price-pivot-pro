@@ -90,21 +90,57 @@ const SupplierTool = () => {
       let factoryPdfBytes: Uint8Array;
       
       if (factoryFile.name.endsWith('.rtf')) {
-        // For RTF files, we need to convert them to PDF first
-        // This is a simplified approach - in production you'd want a proper RTF to PDF converter
+        // Enhanced RTF to PDF conversion
         const rtfContent = await factoryFile.text();
-        const pdfDoc = await import('pdf-lib').then(lib => lib.PDFDocument.create());
-        const page = pdfDoc.addPage();
-        const { height } = page.getSize();
+        const { PDFDocument, StandardFonts, rgb } = await import('pdf-lib');
+        const pdfDoc = await PDFDocument.create();
+        const page = pdfDoc.addPage([595, 842]); // A4 size
+        const { width, height } = page.getSize();
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
         
-        // Simple text extraction from RTF (remove RTF codes)
-        const plainText = rtfContent
-          .replace(/\\[a-zA-Z]+\d*\s?/g, '')
+        // Enhanced text extraction from RTF
+        let plainText = rtfContent
+          .replace(/^{\s*\\rtf1.*?(?=\\)/g, '')
+          .replace(/\\fonttbl[^}]*}/g, '')
+          .replace(/\\colortbl[^}]*}/g, '')
+          .replace(/\\stylesheet[^}]*}/g, '')
+          .replace(/\\info[^}]*}/g, '')
+          .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
+          .replace(/\\[^a-zA-Z\s]/g, '')
           .replace(/[{}]/g, '')
+          .replace(/\s+/g, ' ')
           .replace(/\\\\/g, '\\')
+          .replace(/\\'/g, "'")
           .trim();
         
-        page.drawText(plainText, { x: 50, y: height - 50, size: 12 });
+        // Split text into lines and pages
+        const words = plainText.split(' ');
+        const lines = [];
+        let currentLine = '';
+        const maxWordsPerLine = 12;
+        
+        for (let i = 0; i < words.length; i += maxWordsPerLine) {
+          lines.push(words.slice(i, i + maxWordsPerLine).join(' '));
+        }
+        
+        let currentY = height - 50;
+        const lineHeight = 15;
+        
+        for (const line of lines.slice(0, 50)) { // Limit to 50 lines for demo
+          if (currentY < 50) break;
+          
+          page.drawText(line, {
+            x: 50,
+            y: currentY,
+            size: 11,
+            font,
+            color: rgb(0, 0, 0),
+            maxWidth: width - 100
+          });
+          
+          currentY -= lineHeight;
+        }
+        
         factoryPdfBytes = await pdfDoc.save();
       } else {
         factoryPdfBytes = new Uint8Array(await factoryFile.arrayBuffer());

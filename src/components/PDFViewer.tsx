@@ -4,11 +4,13 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
-// Set up PDF.js worker - use local version to avoid CDN issues
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url
-).toString();
+// Set up PDF.js worker with fallback mechanism
+try {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+} catch (error) {
+  console.warn('Using PDF.js fallback worker');
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
+}
 
 interface PDFViewerProps {
   pdfFile: File | null;
@@ -26,32 +28,44 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
 
   const extractPricesFromText = useCallback((text: string, pageIndex: number) => {
     const pricePatterns = [
-      /€\s*(\d+[.,]\d{2})/g,
-      /(\d+[.,]\d{2})\s*€/g,
+      // European format with euro symbol
+      /€\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g,
+      /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/g,
+      // European format without euro symbol (2 decimals)
+      /(?:^|\s)(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})(?:\s|$)/g,
+      // Simple euro amounts
       /€\s*(\d+)/g,
-      /(\d+)\s*€/g
+      /(\d+)\s*€/g,
+      // Price-like patterns
+      /(?:price|cost|total|amount|τιμή|κόστος|σύνολο)\s*:?\s*(\d+[.,]?\d*)/gi,
+      // Numbers that look like prices (over 10, with potential decimal)
+      /(?:^|\s)(\d{2,}[.,]\d{1,2})(?:\s|$)/g
     ];
 
     const prices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+    const foundValues = new Set<number>(); // Avoid duplicates
     
-    pricePatterns.forEach(pattern => {
+    pricePatterns.forEach((pattern, patternIndex) => {
+      const regex = new RegExp(pattern.source, pattern.flags);
       let match;
-      while ((match = pattern.exec(text)) !== null) {
-        const priceStr = match[1];
-        const value = parseFloat(priceStr.replace(',', '.'));
-        if (!isNaN(value)) {
-          // Mock coordinates - in real implementation, these would come from text positioning
+      while ((match = regex.exec(text)) !== null) {
+        const priceStr = match[1] || match[0];
+        const cleanedPrice = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
+        const value = parseFloat(cleanedPrice);
+        
+        if (!isNaN(value) && value > 0 && value < 100000 && !foundValues.has(value)) {
+          foundValues.add(value);
           prices.push({
             value,
-            x: 450 + Math.random() * 50,
-            y: 650 - prices.length * 20,
+            x: 450 + (patternIndex * 30),
+            y: 650 - prices.length * 25,
             pageIndex
           });
         }
       }
     });
 
-    return prices;
+    return prices.sort((a, b) => a.value - b.value);
   }, []);
 
   const renderPage = useCallback(async (pageNum: number) => {
