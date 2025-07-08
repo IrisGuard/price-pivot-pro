@@ -24,22 +24,26 @@ export interface CSVProcessingResult {
 }
 
 export class CSVProcessor {
-  async processCSVFile(file: File): Promise<CSVProcessingResult> {
+  async processCSVFile(file: File, signal?: AbortSignal): Promise<CSVProcessingResult> {
     const startTime = Date.now();
     
     try {
+      if (signal?.aborted) throw new Error('CSV processing cancelled');
+      
       let data: any[][] = [];
       let fileType: 'csv' | 'excel' = 'csv';
       
       if (file.name.toLowerCase().endsWith('.csv')) {
-        data = await this.parseCSV(file);
+        data = await this.parseCSV(file, signal);
         fileType = 'csv';
       } else if (file.name.toLowerCase().match(/\.(xlsx|xls)$/)) {
-        data = await this.parseExcel(file);
+        data = await this.parseExcel(file, signal);
         fileType = 'excel';
       } else {
         throw new Error('Μη υποστηριζόμενος τύπος αρχείου');
       }
+      
+      if (signal?.aborted) throw new Error('CSV processing cancelled');
       
       const contacts = this.extractContacts(data);
       const emails = this.extractEmails(data);
@@ -62,10 +66,19 @@ export class CSVProcessor {
     }
   }
   
-  private async parseCSV(file: File): Promise<any[][]> {
+  private async parseCSV(file: File, signal?: AbortSignal): Promise<any[][]> {
     return new Promise((resolve, reject) => {
+      if (signal?.aborted) {
+        reject(new Error('CSV parsing cancelled'));
+        return;
+      }
+      
       Papa.parse(file, {
         complete: (results) => {
+          if (signal?.aborted) {
+            reject(new Error('CSV parsing cancelled'));
+            return;
+          }
           if (results.errors.length > 0) {
             reject(new Error(`CSV parsing error: ${results.errors[0].message}`));
             return;
@@ -81,9 +94,13 @@ export class CSVProcessor {
     });
   }
   
-  private async parseExcel(file: File): Promise<any[][]> {
+  private async parseExcel(file: File, signal?: AbortSignal): Promise<any[][]> {
     try {
+      if (signal?.aborted) throw new Error('Excel parsing cancelled');
+      
       const arrayBuffer = await file.arrayBuffer();
+      if (signal?.aborted) throw new Error('Excel parsing cancelled');
+      
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];

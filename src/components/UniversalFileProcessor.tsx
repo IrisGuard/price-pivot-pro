@@ -84,7 +84,7 @@ export const UniversalFileProcessor = ({
     if (isPDF) {
       return { type: 'pdf', content: file };
     } else if (isRTF) {
-      const pdfBytes = await convertRTFToPDF(file);
+      const pdfBytes = await convertRTFToPDF(file, signal);
       const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
       const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
         type: 'application/pdf'
@@ -92,7 +92,7 @@ export const UniversalFileProcessor = ({
       return { type: 'rtf', content: pdfFile };
     } else if (isCSV || isExcel) {
       const csvProcessor = new CSVProcessor();
-      const result = await csvProcessor.processCSVFile(file);
+      const result = await csvProcessor.processCSVFile(file, signal);
       return { 
         type: isCSV ? 'csv' : 'excel', 
         contacts: result.contacts,
@@ -145,24 +145,27 @@ export const UniversalFileProcessor = ({
         setStage('Μετατροπή RTF σε PDF...');
         setProgress(25);
         
-        // RTF processing with 12s timeout (no racing with converter)
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('RTF timeout - χρήση fallback')), 12000);
-        });
+        // RTF processing with timeout via AbortController
+        const timeoutId = setTimeout(() => {
+          console.warn('RTF processing timeout after 12s');
+        }, 12000);
         
-        const pdfBytes = await Promise.race([
-          convertRTFToPDF(file),
-          timeoutPromise
-        ]);
+        try {
+          const pdfBytes = await convertRTFToPDF(file);
+          clearTimeout(timeoutId);
         
-        setProgress(75);
-        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-          type: 'application/pdf'
-        });
-        
-        setProgress(100);
-        setProcessingResult({ type: 'rtf', content: pdfFile });
+          setProgress(75);
+          const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
+            type: 'application/pdf'
+          });
+          
+          setProgress(100);
+          setProcessingResult({ type: 'rtf', content: pdfFile });
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
         
         toast({
           title: "✅ RTF επεξεργασία",
@@ -173,35 +176,39 @@ export const UniversalFileProcessor = ({
         setStage('Επεξεργασία δεδομένων...');
         setProgress(25);
         
-        // CSV/Excel processing with 15s timeout  
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('CSV/Excel timeout')), 15000);
-        });
+        // CSV/Excel processing with timeout
+        const timeoutId = setTimeout(() => {
+          console.warn('CSV/Excel processing timeout after 15s');
+        }, 15000);
         
-        const csvProcessor = new CSVProcessor();
-        const result = await Promise.race([
-          csvProcessor.processCSVFile(file),
-          timeoutPromise
-        ]);
+        let result;
+        try {
+          const csvProcessor = new CSVProcessor();
+          result = await csvProcessor.processCSVFile(file);
+          clearTimeout(timeoutId);
         
-        setProgress(75);
-        
-        setProcessingResult({ 
-          type: isCSV ? 'csv' : 'excel', 
-          contacts: result.contacts,
-          emails: result.emails
-        });
-        
-        setProgress(100);
-        
-        // Notify parent components
-        if (onContactsDetected) onContactsDetected(result.contacts);
-        if (onEmailsDetected) onEmailsDetected(result.emails);
-        
-        toast({
-          title: `✅ ${isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
-          description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
-        });
+          setProgress(75);
+          
+          setProcessingResult({ 
+            type: isCSV ? 'csv' : 'excel', 
+            contacts: result.contacts,
+            emails: result.emails
+          });
+          
+          setProgress(100);
+          
+          // Notify parent components
+          if (onContactsDetected) onContactsDetected(result.contacts);
+          if (onEmailsDetected) onEmailsDetected(result.emails);
+          
+          toast({
+            title: `✅ ${isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
+            description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
+          });
+        } catch (error) {
+          clearTimeout(timeoutId);
+          throw error;
+        }
       }
       
     } catch (error) {
@@ -241,6 +248,12 @@ export const UniversalFileProcessor = ({
   const handleOptimizedFileCancel = () => {
     setShowOptimizedLoader(false);
     setUseOptimizedMode(false);
+    
+    toast({
+      title: "⚡ Μετάβαση σε γρήγορη φόρτωση",
+      description: "Δοκιμή με βασικό processing mode...",
+    });
+    
     // Fallback to fast processing
     processFile();
   };

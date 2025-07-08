@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 export const useRTFToPDFConverter = () => {
-  const convertRTFToPDF = useCallback(async (file: File): Promise<Uint8Array> => {
+  const convertRTFToPDF = useCallback(async (file: File, signal?: AbortSignal): Promise<Uint8Array> => {
     if (!file.name.endsWith('.rtf')) {
       return new Uint8Array(await file.arrayBuffer());
     }
@@ -14,11 +14,17 @@ export const useRTFToPDFConverter = () => {
 
     try {
       const result = await (async () => {
+          if (signal?.aborted) throw new Error('RTF conversion cancelled');
+          
           const rtfContent = await file.text();
+          if (signal?.aborted) throw new Error('RTF conversion cancelled');
+          
           const pdfDoc = await PDFDocument.create();
           const page = pdfDoc.addPage([595, 842]);
           const { width, height } = page.getSize();
           const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+          
+          if (signal?.aborted) throw new Error('RTF conversion cancelled');
           
           // Fast RTF text extraction
           const plainText = rtfContent

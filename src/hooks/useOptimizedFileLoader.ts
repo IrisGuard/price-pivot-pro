@@ -47,11 +47,10 @@ export const useOptimizedFileLoader = () => {
     setProgress(null);
 
     try {
-      // Check cache first (with safe mode fallback)
+      // Check cache first (with safe fallback)
       const cacheKey = `optimized-${file.name}-${file.size}-${file.lastModified}`;
-      const useSafeMode = !config.cacheEnabled || !ENV_CONFIG.IS_PRODUCTION;
       
-      if (enableCache && !useSafeMode) {
+      if (enableCache) {
         try {
           const cached = fileCache.get(file, cacheKey);
           if (cached) {
@@ -103,8 +102,8 @@ export const useOptimizedFileLoader = () => {
       updateProgress(100, 100, 'complete');
       onProgress?.({ loaded: 100, total: 100, percentage: 100, stage: 'complete' });
 
-      // Cache result (with safe mode check)
-      if (enableCache && !useSafeMode) {
+      // Cache result (safe fallback)
+      if (enableCache) {
         try {
           fileCache.set(file, cacheKey, result);
         } catch (error) {
