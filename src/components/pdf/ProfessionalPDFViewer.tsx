@@ -36,14 +36,24 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
     setPagesRendered(success);
   }, []);
 
+  // Enhanced page navigation with scrolling
+  const handlePageSelect = useCallback((pageIndex: number) => {
+    navigation.goToPage(pageIndex);
+    // Scroll to the specific page
+    const pageElement = document.getElementById(`pdf-page-${pageIndex + 1}`);
+    if (pageElement) {
+      pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [navigation]);
+
   // Stable callbacks to prevent infinite re-renders
   const stableOnTextExtracted = useCallback((text: string) => {
-    if (onTextExtracted) onTextExtracted(text);
-  }, [onTextExtracted]);
+    onTextExtracted?.(text);
+  }, []);
 
   const stableOnPricesDetected = useCallback((prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => {
-    if (onPricesDetected) onPricesDetected(prices);
-  }, [onPricesDetected]);
+    onPricesDetected?.(prices);
+  }, []);
 
   if (!pdfFile) {
     return (
@@ -64,7 +74,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
         <PDFSidebar 
           pdfDoc={pdfDoc}
           currentPageIndex={navigation.currentPageIndex}
-          onPageSelect={navigation.goToPage}
+          onPageSelect={handlePageSelect}
           collapsed={sidebarCollapsed}
           onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
@@ -110,8 +120,8 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
         </div>
       </div>
 
-      {/* Professional Control Panel - Fixed below all content */}
-      {(pagesRendered || (!pdfDoc && pdfUrl)) && (
+      {/* Professional Control Panel - Always visible when PDF is loaded */}
+      {(pdfDoc || pdfUrl) && (
         <div className="w-full bg-gray-50 border-t mt-auto">
           <div className="container mx-auto max-w-4xl py-8">
             <ProfessionalControlPanel 

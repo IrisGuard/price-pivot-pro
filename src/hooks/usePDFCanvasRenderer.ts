@@ -15,19 +15,20 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const lastRenderedRef = useRef<{ pdfDoc: pdfjsLib.PDFDocumentProxy | null; scale: number; numPages: number } | null>(null);
   const canvasesRef = useRef<HTMLCanvasElement[]>([]);
+  const renderingRef = useRef(false);
 
-  // Memoized callbacks to prevent infinite re-renders
+  // Stable callbacks with empty dependencies to prevent infinite re-renders
   const stableOnTextExtracted = useCallback((text: string) => {
-    if (onTextExtracted) onTextExtracted(text);
-  }, [onTextExtracted]);
+    onTextExtracted?.(text);
+  }, []);
 
   const stableOnPricesDetected = useCallback((prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => {
-    if (onPricesDetected) onPricesDetected(prices);
-  }, [onPricesDetected]);
+    onPricesDetected?.(prices);
+  }, []);
 
   const stableOnRenderComplete = useCallback((success: boolean) => {
-    if (onRenderComplete) onRenderComplete(success);
-  }, [onRenderComplete]);
+    onRenderComplete?.(success);
+  }, []);
 
   // Check if we need to re-render (avoid unnecessary renders)
   const shouldRender = useMemo(() => {
@@ -57,27 +58,40 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
   }, []);
 
   useEffect(() => {
-    if (!pdfDoc || !containerRef.current || !shouldRender) {
-      if (!pdfDoc && stableOnRenderComplete) {
+    if (!pdfDoc || !containerRef.current || !shouldRender || renderingRef.current) {
+      if (!pdfDoc) {
         stableOnRenderComplete(false);
       }
       return;
     }
 
     let isCancelled = false;
+    renderingRef.current = true;
 
     const renderPages = async () => {
       const container = containerRef.current;
-      if (!container || isCancelled) return;
-
-      // Clean up previous render
-      cleanup();
-      
-      let allText = '';
-      let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
-      const newCanvases: HTMLCanvasElement[] = [];
+      if (!container || isCancelled) {
+        renderingRef.current = false;
+        return;
+      }
 
       try {
+        // Avoid innerHTML clearing - only clear if needed
+        if (canvasesRef.current.length > 0) {
+          canvasesRef.current.forEach(canvas => {
+            const ctx = canvas.getContext('2d');
+            if (ctx) {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+            canvas.remove();
+          });
+          canvasesRef.current = [];
+        }
+        
+        let allText = '';
+        let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+        const newCanvases: HTMLCanvasElement[] = [];
+
         for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
           if (isCancelled) break;
           
@@ -102,6 +116,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
           canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
           canvas.style.border = '1px solid #e5e7eb';
           canvas.style.backgroundColor = 'white';
+          canvas.id = `pdf-page-${pageNum}`;
 
           // Render PDF page to canvas
           const renderContext = {
@@ -112,7 +127,6 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
           await page.render(renderContext).promise;
           
           if (!isCancelled) {
-            // Add canvas to container and tracking
             container.appendChild(canvas);
             newCanvases.push(canvas);
 
@@ -126,7 +140,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
 
               allText += textItems + ' ';
 
-              // Extract prices from this page (simple pattern matching)
+              // Extract prices from this page
               const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
               const pagePrices = priceMatches.map((match, index) => ({
                 value: parseFloat(match.replace(',', '.')),
@@ -161,6 +175,8 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
         if (!isCancelled) {
           stableOnRenderComplete(false);
         }
+      } finally {
+        renderingRef.current = false;
       }
     };
 
@@ -169,8 +185,9 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
     // Cleanup function for useEffect
     return () => {
       isCancelled = true;
+      renderingRef.current = false;
     };
-  }, [pdfDoc, scale, shouldRender, cleanup, stableOnTextExtracted, stableOnPricesDetected, stableOnRenderComplete]);
+  }, [pdfDoc, scale, shouldRender]);
 
   return { containerRef };
 };

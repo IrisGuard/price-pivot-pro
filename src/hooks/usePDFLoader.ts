@@ -20,18 +20,21 @@ export const usePDFLoader = (pdfFile: File | null) => {
       return;
     }
 
+    let loadingTask: any = null;
+    let url: string | null = null;
+
     const loadPDF = async () => {
       setLoading(true);
       setError(null);
       
-      // Create blob URL for fallback display
-      const url = URL.createObjectURL(pdfFile);
-      setPdfUrl(url);
-      
       try {
+        // Create blob URL for fallback display
+        url = URL.createObjectURL(pdfFile);
+        setPdfUrl(url);
+        
         const arrayBuffer = await pdfFile.arrayBuffer();
         
-        const loadingTask = pdfjsLib.getDocument({ 
+        loadingTask = pdfjsLib.getDocument({ 
           data: arrayBuffer,
           verbosity: pdfjsLib.VerbosityLevel.ERRORS
         });
@@ -47,18 +50,23 @@ export const usePDFLoader = (pdfFile: File | null) => {
       } catch (error) {
         setError('Σφάλμα φόρτωσης PDF. Χρήση εναλλακτικής προβολής.');
         setPdfDoc(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     loadPDF();
     
     return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
+      // Cleanup
+      if (loadingTask) {
+        loadingTask.destroy();
+      }
+      if (url) {
+        URL.revokeObjectURL(url);
       }
     };
-  }, [pdfFile, pdfUrl]);
+  }, [pdfFile]);
 
   return { pdfDoc, loading, error, pdfUrl };
 };
