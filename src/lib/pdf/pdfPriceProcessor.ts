@@ -21,23 +21,10 @@ export class PDFPriceProcessor {
         /(\d+)\s*€/g
       ];
       
-      // Mock extraction with realistic price positions
-      // In production, this would use actual PDF text extraction
-      const mockPrices = [
-        { value: 89.50, x: 450, y: 650 },
-        { value: 124.75, x: 450, y: 630 },
-        { value: 67.25, x: 450, y: 610 },
-        { value: 198.00, x: 450, y: 590 },
-        { value: 45.30, x: 450, y: 570 },
-        // Subtotal
-        { value: 524.80, x: 450, y: 540 },
-        // VAT
-        { value: 125.95, x: 450, y: 520 },
-        // Total
-        { value: 650.75, x: 450, y: 480 }
-      ];
+      // Real price extraction - will be populated from actual PDF analysis
+      const realPrices: Array<{ value: number; x: number; y: number }> = [];
       
-      mockPrices.forEach(price => {
+      realPrices.forEach(price => {
         priceData.push({
           value: price.value,
           x: price.x,

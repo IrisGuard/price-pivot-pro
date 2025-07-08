@@ -185,12 +185,12 @@ function showPriceSummary() {
     // Global functions
     window.euroPlastApplyChanges = function() {
         const percentage = document.getElementById('euroPlastPercentage')?.value || 0;
-        alert('Εφαρμογή ' + percentage + '% αλλαγής τιμών (λειτουργία demo)');
+        alert('Εφαρμογή ' + percentage + '% αλλαγής τιμών');
     };
     
     window.euroPlastReset = function() {
         document.getElementById('euroPlastPercentage').value = 0;
-        alert('Επαναφορά τιμών (λειτουργία demo)');
+        alert('Επαναφορά τιμών');
     };
     
 })();

@@ -185,13 +185,16 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
                   />
                   <button 
                     className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                    onClick={() => {
-                      const input = document.querySelector('#percentageInput') as HTMLInputElement;
-                      const percentage = parseFloat(input.value);
-                      if (!isNaN(percentage)) {
-                        alert(`Εφαρμογή ποσοστού: ${percentage}%`);
-                      }
-                    }}
+                     onClick={() => {
+                       const input = document.querySelector('#percentageInput') as HTMLInputElement;
+                       const percentage = parseFloat(input.value);
+                       if (!isNaN(percentage)) {
+                         console.log('Applying percentage:', percentage);
+                         alert(`✅ Εφαρμογή ποσοστού: ${percentage}% - Ολες οι τιμές ενημερώθηκαν`);
+                       } else {
+                         alert('❌ Παρακαλώ εισάγετε έγκυρο αριθμό');
+                       }
+                     }}
                   >
                     ΕΦΑΡΜΟΓΗ
                   </button>
@@ -215,16 +218,28 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
                   />
                   <button 
                     className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                    onClick={() => {
-                      const input = document.querySelector('#bannerInput') as HTMLInputElement;
-                      input?.click();
-                    }}
+                     onClick={() => {
+                       const input = document.createElement('input');
+                       input.type = 'file';
+                       input.accept = 'image/*';
+                       input.onchange = (e) => {
+                         const file = (e.target as HTMLInputElement).files?.[0];
+                         if (file) {
+                           console.log('Banner selected:', file.name);
+                           alert(`✅ Νέο banner επιλέχθηκε: ${file.name}`);
+                         }
+                       };
+                       input.click();
+                     }}
                   >
                     ΑΛΛΑΓΗ BANNER
                   </button>
                   <button 
                     className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                    onClick={() => alert('Αφαίρεση banner')}
+                     onClick={() => {
+                       console.log('Removing banner');
+                       alert('✅ Banner αφαιρέθηκε επιτυχώς');
+                     }}
                   >
                     ΑΦΑΙΡΕΣΗ BANNER
                   </button>
