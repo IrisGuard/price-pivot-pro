@@ -51,9 +51,13 @@ const SupplierTool = () => {
 
       {/* Main Content */}
       {!factoryFile ? (
-        <FileUploadSection onFileChange={handleFactoryFileChange} />
+        <>
+          {console.log('🔍 RENDER: No factoryFile, showing upload section')}
+          <FileUploadSection onFileChange={handleFactoryFileChange} />
+        </>
       ) : (
         <>
+          {console.log('🔍 RENDER: factoryFile exists, showing preview:', factoryFile.name)}
           <FilePreviewSection 
             file={factoryFile}
             onPricesDetected={handlePricesDetected}

@@ -35,7 +35,8 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
     input.type = 'file';
     input.accept = '.pdf,.rtf';
     
-    input.onchange = (e) => {
+    // Use addEventListener instead of onchange for better cross-browser support
+    input.addEventListener('change', (e) => {
       console.log('🔥 DIRECT INPUT CHANGE FIRED!');
       const target = e.target as HTMLInputElement;
       if (target.files && target.files.length > 0) {
@@ -44,7 +45,9 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
       } else {
         console.log('❌ No files in direct input');
       }
-    };
+      // Clean up the input element
+      input.remove();
+    });
     
     console.log('🖱️ Triggering click on dynamic input');
     input.click();

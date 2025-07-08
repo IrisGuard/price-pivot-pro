@@ -63,6 +63,7 @@ export const UniversalFileViewer = ({
   }, [file, convertRTFToPDF]);
 
   if (!file) {
+    console.log('🔍 UNIVERSAL VIEWER: No file - showing empty state');
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <p className="text-muted-foreground">Δεν έχει επιλεχθεί αρχείο</p>

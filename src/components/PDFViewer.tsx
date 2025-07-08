@@ -130,6 +130,7 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
   }, [scale]);
 
   if (!pdfFile) {
+    console.log('🔍 PDF VIEWER: No PDF file - showing empty state');
     return (
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
         <div className="text-center text-muted-foreground">

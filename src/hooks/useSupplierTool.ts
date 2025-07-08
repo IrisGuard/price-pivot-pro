@@ -36,9 +36,16 @@ export const useSupplierTool = () => {
     setDetectedPrices([]);
     setCurrentPrices([]);
     
-    // Set the new file
+    // Set the new file with force update
     setFactoryFile(file);
     console.log('✅ HOOK: State updated successfully, preview should render now');
+    console.log('📊 HOOK: Current factoryFile state will be:', file.name);
+    
+    // Add toast notification for successful file load
+    toast({
+      title: "✅ Αρχείο φορτώθηκε επιτυχώς",
+      description: `${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
+    });
     
     // Add a small delay to ensure state is updated
     setTimeout(() => {
