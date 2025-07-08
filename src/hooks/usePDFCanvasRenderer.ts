@@ -4,13 +4,14 @@ import * as pdfjsLib from 'pdfjs-dist';
 interface PDFCanvasRendererOptions {
   pdfDoc: pdfjsLib.PDFDocumentProxy | null;
   scale: number;
+  currentPageIndex?: number;
   onTextExtracted?: (text: string) => void;
   onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
   onRenderComplete?: (success: boolean) => void;
 }
 
 export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
-  const { pdfDoc, scale, onTextExtracted, onPricesDetected, onRenderComplete } = options;
+  const { pdfDoc, scale, currentPageIndex = -1, onTextExtracted, onPricesDetected, onRenderComplete } = options;
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,7 +31,12 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
       let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
 
       try {
-        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        // Determine which pages to render
+        const pagesToRender = currentPageIndex >= 0 
+          ? [currentPageIndex + 1] // Render only current page
+          : Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1); // Render all pages
+
+        for (const pageNum of pagesToRender) {
           const page = await pdfDoc.getPage(pageNum);
           const viewport = page.getViewport({ scale });
           
@@ -104,7 +110,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
     };
 
     renderPages();
-  }, [pdfDoc, scale, onTextExtracted, onPricesDetected, onRenderComplete]);
+  }, [pdfDoc, scale, currentPageIndex, onTextExtracted, onPricesDetected, onRenderComplete]);
 
   return { containerRef };
 };

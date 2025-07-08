@@ -3,9 +3,11 @@ import { AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePDFLoader } from '@/hooks/usePDFLoader';
+import { usePDFNavigation } from '@/hooks/usePDFNavigation';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { PDFCanvasRenderer } from '@/components/pdf/PDFCanvasRenderer';
 import { PDFBrowserFallback } from '@/components/pdf/PDFBrowserFallback';
+import { PDFSidebar } from '@/components/pdf/PDFSidebar';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
 
 interface ProfessionalPDFViewerProps {
@@ -17,8 +19,10 @@ interface ProfessionalPDFViewerProps {
 export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: ProfessionalPDFViewerProps) => {
   const [scale, setScale] = useState(1.0);
   const [pagesRendered, setPagesRendered] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   
   const { pdfDoc, loading, error, pdfUrl } = usePDFLoader(pdfFile);
+  const navigation = usePDFNavigation(pdfDoc?.numPages || 0);
 
   const zoomIn = useCallback(() => {
     setScale(prev => prev + 0.2);
@@ -45,40 +49,54 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
 
   return (
     <div className="w-full min-h-screen bg-muted/20">
-      {/* PDF Viewer Section */}
-      <div className="bg-white">
-        <PDFZoomControls
-          scale={scale}
-          onZoomIn={zoomIn}
-          onZoomOut={zoomOut}
-          pageCount={pdfDoc?.numPages}
+      {/* 3-Column Layout: Sidebar + PDF + Content */}
+      <div className="flex">
+        {/* Left Sidebar with Thumbnails */}
+        <PDFSidebar 
+          pdfDoc={pdfDoc}
+          currentPageIndex={navigation.currentPageIndex}
+          onPageSelect={navigation.goToPage}
+          collapsed={sidebarCollapsed}
+          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         />
 
-        {error && (
-          <Alert className="mx-4 mb-2">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        {/* Main Content Area */}
+        <div className="flex-1 bg-white">
+          {/* Zoom Controls */}
+          <PDFZoomControls
+            scale={scale}
+            onZoomIn={zoomIn}
+            onZoomOut={zoomOut}
+            pageCount={pdfDoc?.numPages}
+          />
 
-        {/* PDF Content Container */}
-        <div className="flex justify-center py-8">
-          {/* Canvas Renderer */}
-          {pdfDoc && (
-            <PDFCanvasRenderer
-              pdfDoc={pdfDoc}
-              scale={scale}
-              loading={loading}
-              onTextExtracted={onTextExtracted}
-              onPricesDetected={onPricesDetected}
-              onRenderComplete={handleRenderComplete}
-            />
+          {error && (
+            <Alert className="mx-4 mb-2">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
-          
-          {/* Browser Fallback */}
-          {(!pdfDoc && pdfUrl && !loading) && (
-            <PDFBrowserFallback pdfUrl={pdfUrl} />
-          )}
+
+          {/* PDF Content Container */}
+          <div className="flex justify-center py-8">
+            {/* Canvas Renderer */}
+            {pdfDoc && (
+              <PDFCanvasRenderer
+                pdfDoc={pdfDoc}
+                scale={scale}
+                loading={loading}
+                currentPageIndex={navigation.currentPageIndex}
+                onTextExtracted={onTextExtracted}
+                onPricesDetected={onPricesDetected}
+                onRenderComplete={handleRenderComplete}
+              />
+            )}
+            
+            {/* Browser Fallback */}
+            {(!pdfDoc && pdfUrl && !loading) && (
+              <PDFBrowserFallback pdfUrl={pdfUrl} />
+            )}
+          </div>
         </div>
       </div>
 

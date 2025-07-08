@@ -1,7 +1,6 @@
 import { EditorMode } from "@/components/supplier/EditorMode";
 import { FileUploadSection } from "@/components/supplier/FileUploadSection";
 import { FilePreviewSection } from "@/components/supplier/FilePreviewSection";
-import { ControlPanel } from "@/components/supplier/ControlPanel";
 import { useSupplierTool } from "@/hooks/useSupplierTool";
 
 const SupplierTool = () => {
@@ -54,24 +53,12 @@ const SupplierTool = () => {
         {!factoryFile ? (
           <FileUploadSection onFileChange={handleFactoryFileChange} />
         ) : (
-          <div className="pb-20">
-            <FilePreviewSection 
-              file={factoryFile}
-              onPricesDetected={handlePricesDetected}
-            />
-          </div>
+          <FilePreviewSection 
+            file={factoryFile}
+            onPricesDetected={handlePricesDetected}
+          />
         )}
       </div>
-
-      {/* Control Panel - Fixed at bottom when file is loaded */}
-      {factoryFile && (
-        <ControlPanel
-          percentage={percentage}
-          isProcessing={isProcessing}
-          onPercentageChange={setPercentage}
-          onCreateQuotation={handleCreateQuotation}
-        />
-      )}
     </div>
   );
 };
