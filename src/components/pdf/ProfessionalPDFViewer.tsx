@@ -1,11 +1,9 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import { AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePDFWorkerSetup } from '@/hooks/usePDFWorkerSetup';
-import { usePriceExtraction } from '@/hooks/usePriceExtraction';
-import { usePDFRendering } from '@/hooks/usePDFRendering';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
 
@@ -21,25 +19,29 @@ interface ProfessionalPDFViewerProps {
 
 export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: ProfessionalPDFViewerProps) => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [renderedPages, setRenderedPages] = useState<HTMLCanvasElement[]>([]);
+  const [pagesRendered, setPagesRendered] = useState<boolean>(false);
   const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  const { renderAllPages } = usePDFRendering();
-
+  // Reset state when file changes
   useEffect(() => {
     if (!pdfFile) {
       setPdfUrl(null);
-      setRenderedPages([]);
+      setPagesRendered(false);
       setPdfDoc(null);
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
+      }
       return;
     }
 
     const loadPDF = async () => {
       setLoading(true);
       setError(null);
+      setPagesRendered(false);
       
       // Create blob URL for fallback display
       const url = URL.createObjectURL(pdfFile);
@@ -77,27 +79,105 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
     };
   }, [pdfFile]);
 
+  // Render PDF pages when doc or scale changes
   useEffect(() => {
-    if (pdfDoc) {
-      renderAllPages(pdfDoc, {
-        scale,
-        onTextExtracted,
-        onPricesDetected
-      }).then(pages => {
-        setRenderedPages(pages);
-      }).catch(error => {
-        // Silent error handling
-      });
-    }
-  }, [pdfDoc, scale, renderAllPages, onTextExtracted, onPricesDetected]);
+    if (!pdfDoc || !containerRef.current) return;
+
+    const renderPages = async () => {
+      const container = containerRef.current;
+      if (!container) return;
+
+      // Clear previous content
+      container.innerHTML = '';
+      
+      let allText = '';
+      let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+
+      try {
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+          const page = await pdfDoc.getPage(pageNum);
+          const viewport = page.getViewport({ scale });
+          
+          // Create canvas element
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (!ctx) continue;
+
+          // Set canvas dimensions
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          // Apply A4 styling - exact 595px width centered
+          canvas.style.maxWidth = '595px';
+          canvas.style.width = '595px';
+          canvas.style.height = 'auto';
+          canvas.style.display = 'block';
+          canvas.style.margin = '0 auto 16px auto';
+          canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+          canvas.style.border = '1px solid #e5e7eb';
+          canvas.style.backgroundColor = 'white';
+
+          // Render PDF page to canvas
+          const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+          };
+
+          await page.render(renderContext).promise;
+          
+          // Add canvas to container
+          container.appendChild(canvas);
+
+          // Extract text content for processing
+          try {
+            const textContent = await page.getTextContent();
+            const textItems = textContent.items
+              .filter((item): item is any => 'str' in item)
+              .map((item: any) => item.str)
+              .join(' ');
+
+            allText += textItems + ' ';
+
+            // Extract prices from this page (simple pattern matching)
+            const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
+            const pagePrices = priceMatches.map((match, index) => ({
+              value: parseFloat(match.replace(',', '.')),
+              x: 450 + (index * 30),
+              y: 650 - index * 25,
+              pageIndex: pageNum - 1
+            }));
+            
+            allPrices = [...allPrices, ...pagePrices];
+          } catch (textError) {
+            // Continue without text extraction if it fails
+          }
+        }
+
+        // Call callbacks with extracted data
+        if (onTextExtracted && allText) {
+          onTextExtracted(allText);
+        }
+        if (onPricesDetected && allPrices.length > 0) {
+          onPricesDetected(allPrices);
+        }
+
+        setPagesRendered(true);
+      } catch (renderError) {
+        setError('Σφάλμα εμφάνισης PDF');
+        setPagesRendered(false);
+      }
+    };
+
+    renderPages();
+  }, [pdfDoc, scale, onTextExtracted, onPricesDetected]);
 
   const zoomIn = useCallback(() => {
-    setScale(scale + 0.2);
-  }, [scale]);
+    setScale(prev => prev + 0.2);
+  }, []);
 
   const zoomOut = useCallback(() => {
-    setScale(Math.max(0.5, scale - 0.2));
-  }, [scale]);
+    setScale(prev => Math.max(0.5, prev - 0.2));
+  }, []);
 
   if (!pdfFile) {
     return (
@@ -130,7 +210,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
 
         {/* PDF Content Container */}
         <div className="flex justify-center py-8">
-          <div className="relative">
+          <div className="relative w-full max-w-4xl">
             {loading && (
               <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
                 <div className="text-center space-y-2">
@@ -140,24 +220,13 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
               </div>
             )}
             
-            {/* Rendered PDF Pages */}
-            {renderedPages.length > 0 && (
-              <div className="space-y-4" ref={(container) => {
-                if (container && renderedPages.length > 0) {
-                  container.innerHTML = '';
-                  renderedPages.forEach(canvas => {
-                    // Apply A4 styling and centering
-                    canvas.className = 'block mx-auto shadow-lg border border-gray-200';
-                    canvas.style.maxWidth = '595px'; // A4 width
-                    canvas.style.height = 'auto';
-                    
-                    const wrapper = document.createElement('div');
-                    wrapper.className = 'flex justify-center mb-4';
-                    wrapper.appendChild(canvas);
-                    container.appendChild(wrapper);
-                  });
-                }
-              }} />
+            {/* Rendered PDF Pages Container */}
+            {pdfDoc && (
+              <div 
+                ref={containerRef}
+                className="w-full"
+                style={{ minHeight: '842px' }} // A4 height minimum
+              />
             )}
             
             {/* Browser Fallback */}
@@ -180,7 +249,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
       </div>
 
       {/* Professional Control Panel - Always below PDF */}
-      {(renderedPages.length > 0 || (!pdfDoc && pdfUrl)) && (
+      {(pagesRendered || (!pdfDoc && pdfUrl)) && (
         <div className="bg-gray-50 border-t">
           <div className="flex justify-center py-8">
             <ProfessionalControlPanel 
