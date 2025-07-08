@@ -10,7 +10,7 @@ import { useCustomerDataIntegration } from '@/hooks/useCustomerDataIntegration';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { PDFCanvasRenderer } from '@/components/pdf/PDFCanvasRenderer';
 import { PDFBrowserFallback } from '@/components/pdf/PDFBrowserFallback';
-import { PDFSidebar } from '@/components/pdf/PDFSidebar';
+
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
 import { PriceDetectionOverlay } from '@/components/pdf/PriceDetectionOverlay';
 
@@ -23,7 +23,7 @@ interface ProfessionalPDFViewerProps {
 export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: ProfessionalPDFViewerProps) => {
   const [scale, setScale] = useState(1.0);
   const [pagesRendered, setPagesRendered] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  
   
   const { pdfDoc, loading, error, pdfUrl } = usePDFLoader(pdfFile);
   const navigation = usePDFNavigation(pdfDoc?.numPages || 0);
@@ -104,21 +104,8 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
         </Alert>
       )}
 
-      {/* Main Layout: Sidebar + Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar with Thumbnails */}
-        {(pdfDoc || pdfUrl) && (
-          <PDFSidebar 
-            pdfDoc={pdfDoc}
-            currentPageIndex={navigation.currentPageIndex}
-            onPageSelect={handlePageSelect}
-            collapsed={sidebarCollapsed}
-            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          />
-        )}
-
-        {/* Main PDF Content */}
-        <div className="flex-1 flex flex-col bg-white overflow-hidden">
+      {/* Main PDF Content - Full Width */}
+      <div className="flex-1 flex flex-col bg-white overflow-hidden">
           <div className="flex-1 overflow-auto">
             <div className="flex justify-center py-6">
               <div className="w-full max-w-4xl">
@@ -138,7 +125,6 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
                 {(!pdfDoc && pdfUrl && !loading) && (
                   <PDFBrowserFallback pdfUrl={pdfUrl} />
                 )}
-              </div>
             </div>
           </div>
         </div>
