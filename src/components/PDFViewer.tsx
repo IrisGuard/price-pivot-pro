@@ -1,16 +1,29 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// Set up PDF.js worker with fallback mechanism
-try {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-} catch (error) {
-  console.warn('Using PDF.js fallback worker');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
-}
+// Enhanced PDF.js worker setup with multiple fallback strategies
+const setupPDFWorker = () => {
+  try {
+    // Try using the installed version first
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+    console.log('PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+  } catch (error) {
+    console.warn('Primary PDF.js worker failed, trying fallback');
+    try {
+      // Fallback to specific version
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
+    } catch (fallbackError) {
+      console.error('All PDF.js worker setups failed:', fallbackError);
+      // Will use native browser display as final fallback
+    }
+  }
+};
+
+setupPDFWorker();
 
 interface PDFViewerProps {
   pdfFile: File | null;
@@ -20,11 +33,15 @@ interface PDFViewerProps {
 
 export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFViewerProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const objectRef = useRef<HTMLObjectElement>(null);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [scale, setScale] = useState(1.2);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [useFallback, setUseFallback] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const extractPricesFromText = useCallback((text: string, pageIndex: number) => {
     const pricePatterns = [
@@ -113,24 +130,71 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
   }, [pdfDoc, scale, onTextExtracted, onPricesDetected, extractPricesFromText]);
 
   useEffect(() => {
-    if (!pdfFile) return;
+    if (!pdfFile) {
+      setPdfUrl(null);
+      return;
+    }
 
     const loadPDF = async () => {
       setLoading(true);
+      setError(null);
+      setUseFallback(false);
+      
+      // Create blob URL for fallback display
+      const url = URL.createObjectURL(pdfFile);
+      setPdfUrl(url);
+      
       try {
+        console.log('Loading PDF with PDF.js...');
         const arrayBuffer = await pdfFile.arrayBuffer();
-        const doc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        console.log('PDF arrayBuffer size:', arrayBuffer.byteLength);
+        
+        const loadingTask = pdfjsLib.getDocument({ 
+          data: arrayBuffer,
+          verbosity: pdfjsLib.VerbosityLevel.WARNINGS
+        });
+        
+        const doc = await loadingTask.promise;
+        console.log('PDF loaded successfully, pages:', doc.numPages);
+        
         setPdfDoc(doc);
         setTotalPages(doc.numPages);
         setCurrentPage(1);
+        setError(null);
       } catch (error) {
-        console.error('Error loading PDF:', error);
+        console.error('PDF.js loading failed:', error);
+        setError('Σφάλμα φόρτωσης PDF με PDF.js - χρήση εναλλακτικής προβολής');
+        setUseFallback(true);
+        setPdfDoc(null);
+        setTotalPages(0);
+        
+        // Extract text using fallback method for price detection
+        try {
+          const text = await pdfFile.text();
+          if (onTextExtracted) {
+            onTextExtracted(text);
+          }
+          
+          const detectedPrices = extractPricesFromText(text, 0);
+          if (onPricesDetected && detectedPrices.length > 0) {
+            onPricesDetected(detectedPrices);
+          }
+        } catch (textError) {
+          console.warn('Text extraction also failed:', textError);
+        }
       }
       setLoading(false);
     };
 
     loadPDF();
-  }, [pdfFile]);
+    
+    // Cleanup blob URL on unmount
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [pdfFile, onTextExtracted, onPricesDetected, extractPricesFromText]);
 
   useEffect(() => {
     if (pdfDoc) {
@@ -196,9 +260,19 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         </div>
       </div>
 
-      {/* PDF Canvas */}
+      {/* Error Alert */}
+      {error && (
+        <Alert className="mx-4 mb-4 border-orange-500 bg-orange-50">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-sm">
+            {error}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* PDF Content */}
       <div className="flex-1 overflow-auto bg-muted/20">
-        <div className="flex justify-center p-4">
+        <div className="flex justify-center p-4 relative">
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/80 backdrop-blur-sm z-10">
               <div className="text-center">
@@ -207,11 +281,44 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
               </div>
             </div>
           )}
-          <canvas
-            ref={canvasRef}
-            className="border shadow-lg bg-white"
-            style={{ maxWidth: '100%', height: 'auto' }}
-          />
+          
+          {!useFallback && !loading && (
+            <canvas
+              ref={canvasRef}
+              className="border shadow-lg bg-white"
+              style={{ 
+                maxWidth: '100%', 
+                height: 'auto',
+                display: pdfDoc ? 'block' : 'none'
+              }}
+            />
+          )}
+          
+          {(useFallback || (!pdfDoc && !loading)) && pdfUrl && (
+            <div className="w-full max-w-4xl">
+              <object
+                ref={objectRef}
+                data={pdfUrl}
+                type="application/pdf"
+                className="w-full h-[800px] border shadow-lg"
+                style={{ minHeight: '600px' }}
+              >
+                <div className="text-center p-8 bg-white border rounded-lg shadow">
+                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+                  <p className="text-lg font-medium mb-2">Δεν είναι δυνατή η προβολή του PDF</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Το πρόγραμμα περιήγησής σας δεν υποστηρίζει την ενσωματωμένη προβολή PDF
+                  </p>
+                  <Button 
+                    onClick={() => window.open(pdfUrl!, '_blank')}
+                    className="mt-4"
+                  >
+                    Άνοιγμα σε νέα καρτέλα
+                  </Button>
+                </div>
+              </object>
+            </div>
+          )}
         </div>
       </div>
     </Card>
