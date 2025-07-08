@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { UniversalFileViewer } from "@/components/UniversalFileViewer";
 import { PDFEditingPanel } from "@/components/PDFEditingPanel";
+import { useBannerReplacement } from "@/hooks/useBannerReplacement";
 
 interface PriceData {
   value: number;
@@ -14,7 +15,7 @@ interface EditorModeProps {
   detectedPrices: PriceData[];
   onPricesDetected: (prices: PriceData[]) => void;
   onPriceUpdate: (prices: PriceData[]) => void;
-  onExportPDF: () => void;
+  onExportPDF: (bannerFile?: File | null) => void;
   onBack: () => void;
   isProcessing: boolean;
 }
@@ -28,6 +29,11 @@ export const EditorMode = ({
   onBack,
   isProcessing
 }: EditorModeProps) => {
+  const { bannerState, loadBannerFile, removeBanner } = useBannerReplacement();
+
+  const handleExportPDF = () => {
+    onExportPDF(bannerState.currentBanner);
+  };
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
@@ -60,8 +66,11 @@ export const EditorMode = ({
           <PDFEditingPanel
             detectedPrices={detectedPrices}
             onPriceUpdate={onPriceUpdate}
-            onExportPDF={onExportPDF}
+            onExportPDF={handleExportPDF}
             isProcessing={isProcessing}
+            bannerState={bannerState}
+            onBannerLoad={loadBannerFile}
+            onBannerRemove={removeBanner}
           />
         </div>
       </div>

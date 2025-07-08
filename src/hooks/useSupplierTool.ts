@@ -61,7 +61,7 @@ export const useSupplierTool = () => {
     setShowEditor(true);
   };
 
-  const handleCreateQuotationFromEditor = async () => {
+  const handleCreateQuotationFromEditor = async (bannerFile?: File | null) => {
     if (!factoryFile) {
       toast({
         title: "Σφάλμα",
@@ -76,7 +76,8 @@ export const useSupplierTool = () => {
       await createInteractivePDF({
         factoryFile,
         detectedPrices,
-        currentPrices
+        currentPrices,
+        bannerFile
       });
     } finally {
       setIsProcessing(false);

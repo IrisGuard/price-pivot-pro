@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Download, RefreshCw, Palette } from 'lucide-react';
+import { Download, RefreshCw, Palette, Upload, X, Image } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { BannerState } from '@/hooks/useBannerReplacement';
 
 interface PriceData {
   value: number;
@@ -21,16 +22,42 @@ interface PDFEditingPanelProps {
   onPriceUpdate: (prices: PriceData[]) => void;
   onExportPDF: () => void;
   isProcessing: boolean;
+  bannerState: BannerState;
+  onBannerLoad: (file: File) => void;
+  onBannerRemove: () => void;
 }
 
 export const PDFEditingPanel = ({ 
   detectedPrices, 
   onPriceUpdate, 
   onExportPDF, 
-  isProcessing 
+  isProcessing,
+  bannerState,
+  onBannerLoad,
+  onBannerRemove
 }: PDFEditingPanelProps) => {
   const [percentage, setPercentage] = useState<number>(0);
   const [customPrices, setCustomPrices] = useState<PriceData[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleBannerUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type.startsWith('image/')) {
+        onBannerLoad(file);
+      } else {
+        toast({
+          title: "Μη υποστηριζόμενος τύπος αρχείου",
+          description: "Παρακαλώ επιλέξτε εικόνα (PNG, JPG, JPEG)",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleBannerClick = () => {
+    fileInputRef.current?.click();
+  };
 
   useEffect(() => {
     setCustomPrices(detectedPrices);
@@ -181,6 +208,68 @@ export const PDFEditingPanel = ({
               );
             })}
           </div>
+        </div>
+
+        <Separator />
+
+        {/* Banner Upload Section */}
+        <div className="space-y-4">
+          <Label className="text-sm font-semibold flex items-center gap-2">
+            <Image className="h-4 w-4" />
+            Logo/Banner Επιχείρησης
+          </Label>
+          
+          {bannerState.bannerPreview ? (
+            <div className="space-y-3">
+              <div className="relative border rounded-lg overflow-hidden">
+                <img
+                  src={bannerState.bannerPreview}
+                  alt="Banner Preview"
+                  className="w-full h-20 object-contain bg-muted"
+                />
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="absolute top-1 right-1 h-6 w-6 p-0"
+                  onClick={onBannerRemove}
+                  disabled={bannerState.isProcessing}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Banner: {bannerState.currentBanner?.name}
+              </p>
+            </div>
+          ) : (
+            <div 
+              className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
+              onClick={handleBannerClick}
+            >
+              <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground mb-1">
+                Κάντε κλικ για ανέβασμα banner
+              </p>
+              <p className="text-xs text-muted-foreground">
+                PNG, JPG μέχρι 5MB
+              </p>
+            </div>
+          )}
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleBannerUpload}
+            className="hidden"
+          />
+
+          {bannerState.isProcessing && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
+              Επεξεργασία banner...
+            </div>
+          )}
         </div>
 
         <Separator />
