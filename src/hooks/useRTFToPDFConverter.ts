@@ -10,41 +10,58 @@ export const useRTFToPDFConverter = () => {
 
     
     
-    // Use enhanced RTF processor for better text extraction
+    // ΦΑΣΗ 1: Enhanced RTF Processing with Format Preservation
     try {
       const { RTFProcessor } = await import('@/lib/rtf/rtfProcessor');
       const processor = new RTFProcessor();
       const result = await processor.processRTFFile(file);
       
+      // Create A4 document with proper margins
       const pdfDoc = await PDFDocument.create();
-      const page = pdfDoc.addPage([595, 842]); // A4 size
-      const { width, height } = page.getSize();
-      const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const { width, height } = pdfDoc.addPage([595, 842]).getSize();
+      pdfDoc.removePage(0); // Remove the auto-created page
+      
+      // Professional document setup
+      const margins = { top: 72, bottom: 72, left: 72, right: 72 }; // 1 inch margins
+      const contentWidth = width - margins.left - margins.right;
+      const contentHeight = height - margins.top - margins.bottom;
+      
+      // Enhanced font handling
+      const fonts = {
+        regular: await pdfDoc.embedFont(StandardFonts.TimesRoman),
+        bold: await pdfDoc.embedFont(StandardFonts.TimesRomanBold),
+        italic: await pdfDoc.embedFont(StandardFonts.TimesRomanItalic)
+      };
       
       const plainText = result.text;
-    
-      // Split text into lines and pages
-      const words = plainText.split(' ');
-      const lines = [];
-      const maxWordsPerLine = 12;
+      const lines = processTextWithFormating(plainText, contentWidth, fonts.regular, 12);
       
-      for (let i = 0; i < words.length; i += maxWordsPerLine) {
-        lines.push(words.slice(i, i + maxWordsPerLine).join(' '));
-      }
+      // Create pages as needed
+      let currentPage = pdfDoc.addPage([595, 842]);
+      let currentY = height - margins.top;
+      const lineHeight = 16; // Better line spacing
       
-      let currentY = height - 50;
-      const lineHeight = 15;
-      
-      for (const line of lines.slice(0, 50)) { // Limit to 50 lines for demo
-        if (currentY < 50) break;
+      for (const line of lines) {
+        // Check if we need a new page
+        if (currentY < margins.bottom + lineHeight) {
+          currentPage = pdfDoc.addPage([595, 842]);
+          currentY = height - margins.top;
+        }
         
-        page.drawText(line, {
-          x: 50,
+        // Handle empty lines (paragraph breaks)
+        if (line.trim() === '') {
+          currentY -= lineHeight * 0.5;
+          continue;
+        }
+        
+        currentPage.drawText(line, {
+          x: margins.left,
           y: currentY,
-          size: 11,
-          font,
+          size: 12,
+          font: fonts.regular,
           color: rgb(0, 0, 0),
-          maxWidth: width - 100
+          maxWidth: contentWidth,
+          lineHeight: lineHeight
         });
         
         currentY -= lineHeight;
@@ -97,5 +114,43 @@ export const useRTFToPDFConverter = () => {
     }
   }, []);
 
-  return { convertRTFToPDF };
+  // Helper method for better text processing
+  const processTextWithFormating = (text: string, maxWidth: number, font: any, fontSize: number) => {
+    const lines: string[] = [];
+    const paragraphs = text.split('\n\n');
+    
+    paragraphs.forEach((paragraph, index) => {
+      if (paragraph.trim() === '') {
+        lines.push('');
+        return;
+      }
+      
+      const words = paragraph.trim().split(/\s+/);
+      let currentLine = '';
+      
+      words.forEach(word => {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        // Approximate text width calculation
+        const textWidth = testLine.length * (fontSize * 0.6);
+        
+        if (textWidth <= maxWidth) {
+          currentLine = testLine;
+        } else {
+          if (currentLine) lines.push(currentLine);
+          currentLine = word;
+        }
+      });
+      
+      if (currentLine) lines.push(currentLine);
+      
+      // Add spacing between paragraphs (except last)
+      if (index < paragraphs.length - 1) {
+        lines.push('');
+      }
+    });
+    
+    return lines;
+  };
+
+  return { convertRTFToPDF, processTextWithFormating };
 };
