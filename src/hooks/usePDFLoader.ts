@@ -87,10 +87,12 @@ export const usePDFLoader = (pdfFile: File | null) => {
         setPdfDoc(result);
         setError(null);
       } catch (error) {
-        console.warn('PDF loading failed:', error);
-        setError(null); // Don't show error, just use fallback
+        console.error('❌ PDF loading failed:', error);
+        const errorMsg = error instanceof Error ? error.message : 'PDF loading error';
+        setError(errorMsg);
         setPdfDoc(null);
       } finally {
+        console.log('🔄 PDF loading state reset');
         setLoading(false);
       }
     };

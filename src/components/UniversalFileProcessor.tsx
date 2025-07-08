@@ -61,6 +61,11 @@ export const UniversalFileProcessor = ({
     setIsProcessing(true);
     setProcessingResult(null);
 
+    // Global 10-second timeout for all file operations
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Η φόρτωση του αρχείου διήρκησε πάρα πολύ. Παρακαλώ δοκιμάστε ξανά.')), 10000);
+    });
+
     try {
       const fileExtension = file.name.toLowerCase().split('.').pop();
       const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
@@ -68,58 +73,83 @@ export const UniversalFileProcessor = ({
       const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
       const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
 
-      if (isPDF) {
-        // Process PDF normally
-        setProcessingResult({ type: 'pdf', content: file });
-        
-        // Extract emails from PDF text if available
-        const text = await extractTextFromPDF(file);
-        if (text && onEmailsDetected) {
-          const emailExtractor = new EmailExtractor();
-          const emailResult = emailExtractor.extractFromPDF(text);
-          onEmailsDetected(emailResult.emails);
-        }
-        
-      } else if (isRTF) {
-        // Convert RTF to PDF
-        const pdfBytes = await convertRTFToPDF(file);
-        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-        const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-          type: 'application/pdf'
-        });
-        
-        setProcessingResult({ type: 'rtf', content: pdfFile });
-        
+      console.log('🔍 Processing file:', file.name, 'Type:', file.type, 'Extension:', fileExtension);
+
+      // Immediate rejection for unsupported files
+      if (!isPDF && !isRTF && !isCSV && !isExcel) {
         toast({
-          title: "✅ RTF επεξεργασία",
-          description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
+          title: "❌ Μη υποστηριζόμενο αρχείο",
+          description: "Υποστηρίζονται μόνο PDF, RTF, CSV και Excel αρχεία",
+          variant: "destructive",
         });
-        
-      } else if (isCSV || isExcel) {
-        // Process CSV/Excel files
-        const csvProcessor = new CSVProcessor();
-        const result = await csvProcessor.processCSVFile(file);
-        
-        setProcessingResult({ 
-          type: isCSV ? 'csv' : 'excel', 
-          contacts: result.contacts,
-          emails: result.emails
-        });
-        
-        // Notify parent components
-        if (onContactsDetected) onContactsDetected(result.contacts);
-        if (onEmailsDetected) onEmailsDetected(result.emails);
-        
-        toast({
-          title: `✅ ${isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
-          description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
-        });
-        
-      } else {
-        throw new Error('Μη υποστηριζόμενος τύπος αρχείου');
+        setProcessingResult({ type: 'pdf', error: 'Μη υποστηριζόμενος τύπος αρχείου' });
+        return;
       }
+
+      await Promise.race([
+        (async () => {
+          if (isPDF) {
+            console.log('📄 Processing PDF file...');
+            // Process PDF normally
+            setProcessingResult({ type: 'pdf', content: file });
+            
+            // Extract emails from PDF text if available
+            try {
+              const text = await extractTextFromPDF(file);
+              if (text && onEmailsDetected) {
+                const emailExtractor = new EmailExtractor();
+                const emailResult = emailExtractor.extractFromPDF(text);
+                onEmailsDetected(emailResult.emails);
+              }
+            } catch (err) {
+              console.warn('Email extraction failed:', err);
+            }
+            
+          } else if (isRTF) {
+            console.log('📝 Converting RTF to PDF...');
+            // Convert RTF to PDF with timeout protection
+            const pdfBytes = await convertRTFToPDF(file);
+            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+            const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
+              type: 'application/pdf'
+            });
+            
+            setProcessingResult({ type: 'rtf', content: pdfFile });
+            
+            toast({
+              title: "✅ RTF επεξεργασία",
+              description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
+            });
+            
+          } else if (isCSV || isExcel) {
+            console.log('📊 Processing spreadsheet file...');
+            // Process CSV/Excel files
+            const csvProcessor = new CSVProcessor();
+            const result = await csvProcessor.processCSVFile(file);
+            
+            setProcessingResult({ 
+              type: isCSV ? 'csv' : 'excel', 
+              contacts: result.contacts,
+              emails: result.emails
+            });
+            
+            // Notify parent components
+            if (onContactsDetected) onContactsDetected(result.contacts);
+            if (onEmailsDetected) onEmailsDetected(result.emails);
+            
+            toast({
+              title: `✅ ${isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
+              description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
+            });
+          }
+        })(),
+        timeoutPromise
+      ]);
+      
+      console.log('✅ File processing completed successfully');
       
     } catch (error) {
+      console.error('❌ File processing error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Άγνωστο σφάλμα επεξεργασίας';
       setProcessingResult({ type: 'pdf', error: errorMessage });
       
@@ -129,6 +159,7 @@ export const UniversalFileProcessor = ({
         variant: "destructive",
       });
     } finally {
+      console.log('🔄 Resetting processing state');
       setIsProcessing(false);
     }
   };
