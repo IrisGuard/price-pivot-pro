@@ -1,4 +1,4 @@
-import { usePDFCanvasRenderer } from '@/hooks/usePDFCanvasRenderer';
+import { usePDFCanvasRenderer } from '@/hooks/pdf/usePDFCanvasRenderer';
 import * as pdfjsLib from 'pdfjs-dist';
 
 interface PDFCanvasRendererProps {
