@@ -138,3 +138,44 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Print-friendly styles for clean PDF export */
+@media print {
+  .print-hide {
+    display: none !important;
+  }
+  
+  .pdf-control-panel {
+    display: none !important;
+  }
+  
+  .pdf-admin-controls {
+    display: none !important;
+  }
+  
+  /* Ensure PDF pages print correctly */
+  .pdf-page {
+    page-break-inside: avoid;
+    margin: 0;
+    box-shadow: none !important;
+  }
+  
+  /* Hide headers, navigation, and UI elements */
+  .pdf-header,
+  .pdf-navigation,
+  .pdf-zoom-controls {
+    display: none !important;
+  }
+  
+  /* Clean page layout for printing */
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  
+  /* Preserve PDF content styling */
+  .pdf-canvas {
+    margin: 0 auto;
+    display: block;
+  }
+}

@@ -6,6 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
+import { Eye, EyeOff } from 'lucide-react';
+import { useClientMode } from '@/hooks/useClientMode';
+import { cleanPDFExporter } from '@/lib/pdf/cleanPDFExporter';
 
 interface CustomerData {
   name: string;
@@ -17,6 +20,7 @@ interface CustomerData {
 interface ProfessionalControlPanelProps {
   pageWidth?: number;
   isAdminMode?: boolean;
+  pdfFile?: File | null;
   onPercentageChange?: (percentage: number) => void;
   onBannerChange?: (file: File) => void;
   onCustomerDataChange?: (data: CustomerData) => void;
@@ -26,12 +30,14 @@ interface ProfessionalControlPanelProps {
 export const ProfessionalControlPanel = ({ 
   pageWidth = 595, 
   isAdminMode = false,
+  pdfFile,
   onPercentageChange,
   onBannerChange,
   onCustomerDataChange,
   onExportCleanPDF
 }: ProfessionalControlPanelProps) => {
   const [hideControls, setHideControls] = useState(false);
+  const { isClientMode, showControls, toggleClientMode, enterClientMode, enterAdminMode } = useClientMode();
   const [percentage, setPercentage] = useState<string>('');
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: '',
@@ -89,31 +95,75 @@ export const ProfessionalControlPanel = ({
     }
   };
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (onExportCleanPDF) {
       onExportCleanPDF();
+      return;
+    }
+    
+    if (pdfFile) {
+      try {
+        const pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
+        const cleanPdfBytes = await cleanPDFExporter.createCleanPDF(pdfBytes, {
+          removeControlPanels: true,
+          applyCustomerData: true,
+          customerData
+        });
+        
+        await cleanPDFExporter.downloadCleanPDF(cleanPdfBytes);
+        
+        toast({
+          title: "PDF Εξαγωγή",
+          description: "Το καθαρό PDF εξήχθη επιτυχώς",
+        });
+      } catch (error) {
+        toast({
+          title: "Σφάλμα",
+          description: "Σφάλμα κατά την εξαγωγή του PDF",
+          variant: "destructive",
+        });
+      }
     } else {
       window.print();
     }
   };
 
-  if (hideControls && !isAdminMode) {
+  // Hide controls in client mode or when explicitly hidden
+  if ((hideControls && !isAdminMode) || (isClientMode && !showControls)) {
     return null;
   }
 
   return (
     <Card 
-      className="bg-white shadow-lg print:shadow-none"
+      className="bg-white shadow-lg print:shadow-none pdf-control-panel print-hide"
       style={{ width: pageWidth + 'px', maxWidth: '100%' }}
     >
       <div className="p-8 space-y-8">
-        {/* Header */}
+        {/* Header with Mode Toggle */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">
-            🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-primary">
+              🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ
+            </h1>
+            {isAdminMode && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={isClientMode ? "outline" : "default"}
+                  size="sm"
+                  onClick={toggleClientMode}
+                  className="flex items-center gap-2"
+                >
+                  {isClientMode ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                  {isClientMode ? "Προβολή Πελάτη" : "Προβολή Admin"}
+                </Button>
+              </div>
+            )}
+          </div>
           <p className="text-muted-foreground">
-            Χρησιμοποιήστε τα παρακάτω εργαλεία για να παραμετροποιήσετε την προσφορά σας
+            {isClientMode 
+              ? "Προβολή όπως θα τη δει ο πελάτης - χωρίς admin εργαλεία"
+              : "Χρησιμοποιήστε τα παρακάτω εργαλεία για να παραμετροποιήσετε την προσφορά σας"
+            }
           </p>
         </div>
 
@@ -228,32 +278,56 @@ export const ProfessionalControlPanel = ({
         <Separator />
 
         {/* Admin Controls */}
-        {isAdminMode && (
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4">
+        {isAdminMode && !isClientMode && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 space-y-4 pdf-admin-controls">
             <h3 className="text-xl font-semibold text-blue-800 flex items-center gap-2">
               <span>⚙️</span>
               ΕΛΕΓΧΟΣ ADMIN
             </h3>
-            <div className="flex items-center justify-between">
-              <Label htmlFor="hide-controls-toggle" className="text-sm font-medium">
-                Απόκρυψη σελίδας ελέγχου στην εξαγωγή:
-              </Label>
-              <Switch
-                id="hide-controls-toggle"
-                checked={hideControls}
-                onCheckedChange={setHideControls}
-              />
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="hide-controls-toggle" className="text-sm font-medium">
+                  Απόκρυψη σελίδας ελέγχου στην εξαγωγή:
+                </Label>
+                <Switch
+                  id="hide-controls-toggle"
+                  checked={hideControls}
+                  onCheckedChange={setHideControls}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Label htmlFor="client-mode-toggle" className="text-sm font-medium">
+                  Προβολή Πελάτη:
+                </Label>
+                <Switch
+                  id="client-mode-toggle"
+                  checked={isClientMode}
+                  onCheckedChange={toggleClientMode}
+                />
+              </div>
             </div>
             
-            <Button 
-              onClick={handleExportPDF}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              📄 ΕΞΑΓΩΓΗ ΚΑΘΑΡΟΥ PDF
-            </Button>
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                onClick={handleExportPDF}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                📄 ΕΞΑΓΩΓΗ ΚΑΘΑΡΟΥ PDF
+              </Button>
+              
+              <Button 
+                onClick={enterClientMode}
+                variant="outline"
+                className="border-blue-300 text-blue-700 hover:bg-blue-50"
+              >
+                👁️ ΠΡΟΒΟΛΗ ΠΕΛΑΤΗ
+              </Button>
+            </div>
             
             <p className="text-xs text-blue-600">
-              Χρησιμοποιήστε αυτές τις ρυθμίσεις για να ελέγξετε τι βλέπουν οι πελάτες
+              Χρησιμοποιήστε τα controls για να δείτε πώς βλέπει ο πελάτης το PDF και να εξάγετε καθαρές εκδόσεις
             </p>
           </div>
         )}

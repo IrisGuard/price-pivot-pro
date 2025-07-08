@@ -85,7 +85,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   return (
     <div className="w-full min-h-screen bg-gray-50 flex flex-col">
       {/* Fixed Header */}
-      <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
+      <div className="bg-white border-b px-4 py-2 flex items-center justify-between pdf-header print-hide">
         <h1 className="text-lg font-semibold text-gray-900">PDF Επεξεργαστής</h1>
         {pdfDoc && (
           <PDFZoomControls
@@ -137,6 +137,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
             <ProfessionalControlPanel 
               pageWidth={595} // A4 width
               isAdminMode={true}
+              pdfFile={pdfFile}
               onPercentageChange={(percentage) => {
                 priceDetection.applyPercentageToAllPrices(percentage);
               }}

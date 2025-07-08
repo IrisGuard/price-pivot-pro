@@ -6,33 +6,131 @@ export class PDFJavaScriptEngine {
     private securityHash: string
   ) {}
 
-  async addAdvancedJavaScriptEngine(pdfDoc: PDFDocument): Promise<void> {
+  async addAdvancedJavaScriptEngine(pdfDoc: PDFDocument, detectedPrices: any[] = []): Promise<void> {
     // JavaScript code that will be embedded in the PDF
     const jsCode = `
-// EUROPLAST Advanced PDF JavaScript Engine
-// Security Signature: ${this.securitySignature}
-// Hash: ${this.securityHash}
-
+// EUROPLAST Interactive PDF Controller - Enhanced Implementation
 var EUROPLAST = {
-    initialized: false,
-    securityHash: "${this.securityHash}",
-    originalPrices: {},
-    currentPrices: {},
+    prices: ${JSON.stringify(detectedPrices)},
+    originalPrices: ${JSON.stringify(detectedPrices)},
+    customerData: {
+        name: "",
+        profession: "",
+        taxId: "",
+        phone: ""
+    },
     
-    init: function() {
-        if (this.initialized) return;
+    // Enhanced banner management
+    changeBanner: function() {
+        try {
+            app.alert({
+                cMsg: "Για αλλαγή banner:\\n1. Χρησιμοποιήστε το κουμπί ΑΛΛΑΓΗ BANNER\\n2. Επιλέξτε εικόνα από τον υπολογιστή σας\\n3. Το banner θα ενημερωθεί αυτόματα",
+                cTitle: "Οδηγίες Banner",
+                nIcon: 3
+            });
+        } catch (e) {
+            app.alert("Σφάλμα: " + e.message, "Σφάλμα");
+        }
+    },
+    
+    removeBanner: function() {
+        var response = app.alert({
+            cMsg: "Αφαίρεση banner από την πρώτη σελίδα;\\nΗ αλλαγή θα εφαρμοστεί κατά την εξαγωγή.",
+            cTitle: "Αφαίρεση Banner", 
+            nIcon: 2,
+            nType: 2
+        });
         
-        
-        this.extractOriginalPrices();
-        this.setupEventHandlers();
-        this.initialized = true;
-        
+        if (response === 4) {
+            app.alert("Banner θα αφαιρεθεί κατά την εξαγωγή", "Επιτυχία");
+        }
+    },
+    
+    // Enhanced price management
+    applyPercentageFromField: function() {
+        try {
+            var field = this.getField("percentageInput");
+            var percentage = field ? field.value : "0";
+            var pct = parseFloat(percentage);
+            
+            if (isNaN(pct)) {
+                app.alert("Εισάγετε έγκυρο αριθμό", "Σφάλμα");
+                return;
+            }
+            
+            if (Math.abs(pct) > 100) {
+                var confirm = app.alert({
+                    cMsg: "Μεγάλη αλλαγή (" + pct + "%). Συνέχεια;",
+                    cTitle: "Επιβεβαίωση",
+                    nIcon: 2,
+                    nType: 2
+                });
+                if (confirm !== 4) return;
+            }
+            
+            var multiplier = 1 + (pct / 100);
+            var updatedCount = 0;
+            var totalChange = 0;
+            
+            // Apply percentage to all detected prices
+            this.prices.forEach(function(price, index) {
+                var oldValue = price.value;
+                var newValue = Math.round(oldValue * multiplier * 100) / 100;
+                price.value = newValue;
+                totalChange += (newValue - oldValue);
+                updatedCount++;
+                
+                // Update price field if exists
+                var priceField = this.getField("price_" + index);
+                if (priceField) {
+                    priceField.value = newValue.toString();
+                }
+            }.bind(this));
+            
+            app.alert({
+                cMsg: "Ενημερώθηκαν " + updatedCount + " τιμές\\n" +
+                      "Ποσοστό αλλαγής: " + pct + "%\\n" +
+                      "Συνολική διαφορά: " + totalChange.toFixed(2) + "€",
+                cTitle: "Επιτυχής Ενημέρωση",
+                nIcon: 3
+            });
+        } catch (e) {
+            app.alert("Σφάλμα: " + e.message, "Σφάλμα");
+        }
+    },
+    
+    // Customer data management
+    updateCustomerData: function(field, value) {
+        if (this.customerData.hasOwnProperty(field)) {
+            this.customerData[field] = value;
+        }
+    },
+    
+    // Email functionality
+    sendQuote: function() {
+        var customerName = this.customerData.name || "Πελάτης";
         app.alert({
-            cMsg: "✅ EUROPLAST PDF Σύστημα Ενεργοποιήθηκε\\n\\nΑυτό το PDF περιέχει διαδραστικές λειτουργίες τιμολόγησης.\\n\\nΧρησιμοποιήστε το πάνελ ελέγχου για αλλαγή τιμών.",
-            cTitle: "EUROPLAST PDF System",
+            cMsg: "Προσφορά έτοιμη για αποστολή σε: " + customerName + "\\n\\nΧρησιμοποιήστε Ctrl+P για εκτύπωση ή αποθήκευση.",
+            cTitle: "Αποστολή Προσφοράς",
             nIcon: 3
         });
     },
+    
+    // Reset functionality
+    resetPrices: function() {
+        var response = app.alert({
+            cMsg: "Επαναφορά όλων των τιμών στις αρχικές τιμές;",
+            cTitle: "Επαναφορά Τιμών",
+            nIcon: 2,
+            nType: 2
+        });
+        
+        if (response === 4) {
+            this.prices = JSON.parse(JSON.stringify(this.originalPrices));
+            app.alert("Τιμές επαναφέρθηκαν", "Επιτυχία");
+        }
+    }
+};
     
     extractOriginalPrices: function() {
         // Extract prices from PDF metadata

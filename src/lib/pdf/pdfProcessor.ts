@@ -57,8 +57,9 @@ export class InteractivePDFProcessor {
     // Create embedded interactive control panel
     await this.formCreator.createEmbeddedControlPanel(this.pdfDoc, this.form);
     
-    // Add comprehensive JavaScript engine
-    await this.jsEngine.addAdvancedJavaScriptEngine(this.pdfDoc);
+    // Add comprehensive JavaScript engine with detected prices
+    const priceCoordinates = await this.priceProcessor.getDetectedPrices();
+    await this.jsEngine.addAdvancedJavaScriptEngine(this.pdfDoc, priceCoordinates);
     
     return await this.pdfDoc.save();
   }

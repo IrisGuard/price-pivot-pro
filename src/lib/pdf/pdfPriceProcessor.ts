@@ -2,6 +2,8 @@ import { PDFDocument, rgb } from 'pdf-lib';
 import type { PriceInfo, PriceMetadata } from './types';
 
 export class PDFPriceProcessor {
+  private detectedPrices: any[] = [];
+  
   constructor(private securityHash: string) {}
 
   async extractPriceCoordinates(pdfDoc: PDFDocument): Promise<PriceInfo[]> {
@@ -74,6 +76,7 @@ export class PDFPriceProcessor {
   async processPricesWithCoordinates(pdfDoc: PDFDocument, percentage: number, securitySignature: string): Promise<void> {
     // Store initial prices and their coordinates for JavaScript access
     const priceData = await this.extractPriceCoordinates(pdfDoc);
+    this.detectedPrices = priceData; // Store for later access
     const multiplier = 1 + (percentage / 100);
     
     // Apply initial price changes
@@ -84,5 +87,9 @@ export class PDFPriceProcessor {
     
     // Store price coordinates as PDF metadata for JavaScript access
     await this.storePriceMetadata(pdfDoc, priceData, securitySignature);
+  }
+
+  getDetectedPrices(): any[] {
+    return this.detectedPrices;
   }
 }
