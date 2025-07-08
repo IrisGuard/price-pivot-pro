@@ -60,44 +60,92 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
   const parseRTF = useCallback(async (file: File) => {
     setLoading(true);
     try {
+      console.log('🔄 Parsing RTF file...');
       const arrayBuffer = await file.arrayBuffer();
-      const rtfData = new TextDecoder('utf-8').decode(arrayBuffer);
       
-      // Enhanced RTF to text conversion
-      let textContent = rtfData
-        // Remove RTF header and version info
-        .replace(/^{\s*\\rtf1.*?(?=\\)/g, '')
-        // Remove font table
-        .replace(/\\fonttbl[^}]*}/g, '')
-        // Remove color table
-        .replace(/\\colortbl[^}]*}/g, '')
-        // Remove style sheet
-        .replace(/\\stylesheet[^}]*}/g, '')
-        // Remove info group
-        .replace(/\\info[^}]*}/g, '')
-        // Remove RTF control words and numbers
-        .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
-        // Remove remaining control sequences
-        .replace(/\\[^a-zA-Z\s]/g, '')
-        // Remove braces
-        .replace(/[{}]/g, '')
-        // Clean up multiple spaces
-        .replace(/\s+/g, ' ')
-        // Unescape special characters
-        .replace(/\\\\/g, '\\')
-        .replace(/\\'/g, "'")
-        .replace(/\\"/g, '"')
-        .trim();
-
-      setRtfContent(textContent);
-
-      if (onTextExtracted) {
-        onTextExtracted(textContent);
+      // Try different encodings
+      let rtfData = '';
+      try {
+        rtfData = new TextDecoder('utf-8').decode(arrayBuffer);
+      } catch {
+        try {
+          rtfData = new TextDecoder('windows-1252').decode(arrayBuffer);
+        } catch {
+          rtfData = new TextDecoder('iso-8859-1').decode(arrayBuffer);
+        }
       }
+      
+      console.log('📄 RTF data length:', rtfData.length);
+      
+      try {
+        // Use the new RTF processor for better parsing
+        const processor = await import('@/lib/rtf/rtfProcessor').then(m => new m.RTFProcessor());
+        const result = await processor.processRTFFile(file);
+        
+        setRtfContent(result.text);
 
-      const detectedPrices = extractPricesFromText(textContent);
-      if (onPricesDetected && detectedPrices.length > 0) {
-        onPricesDetected(detectedPrices);
+        if (onTextExtracted) {
+          onTextExtracted(result.text);
+        }
+
+        // Use processed prices from RTF processor
+        if (onPricesDetected && result.prices.length > 0) {
+          onPricesDetected(result.prices);
+        }
+        
+        console.log(`✅ RTF parsed: ${result.text.length} chars, ${result.prices.length} prices`);
+        
+      } catch (processorError) {
+        console.warn('New RTF processor failed, using fallback:', processorError);
+        
+        // FALLBACK: Enhanced RTF parsing
+        let textContent = rtfData
+          // Remove RTF header
+          .replace(/^{\s*\\rtf1[^\\]*/, '')
+          // Remove font table
+          .replace(/\\fonttbl\s*{[^}]*(?:{[^}]*}[^}]*)*}/g, '')
+          // Remove color table  
+          .replace(/\\colortbl\s*;[^}]*}/g, '')
+          // Remove style sheet
+          .replace(/\\stylesheet\s*{[^}]*(?:{[^}]*}[^}]*)*}/g, '')
+          // Remove info group
+          .replace(/\\info\s*{[^}]*(?:{[^}]*}[^}]*)*}/g, '')
+          // Remove generator info
+          .replace(/\\generator[^;]*;/g, '')
+          // Remove view settings
+          .replace(/\\viewkind\d+/g, '')
+          .replace(/\\uc\d+/g, '')
+          // Replace paragraph breaks
+          .replace(/\\par\s*/g, '\n')
+          // Replace line breaks
+          .replace(/\\line\s*/g, '\n')
+          // Replace tabs
+          .replace(/\\tab\s*/g, '\t')
+          // Remove formatting commands but keep content
+          .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
+          // Remove control symbols
+          .replace(/\\[^a-zA-Z\s]/g, '')
+          // Remove remaining braces
+          .replace(/[{}]/g, '')
+          // Clean up whitespace
+          .replace(/\s+/g, ' ')
+          .replace(/\n\s+/g, '\n')
+          // Unescape characters
+          .replace(/\\\\/g, '\\')
+          .replace(/\\'/g, "'")
+          .replace(/\\"/g, '"')
+          .trim();
+
+        setRtfContent(textContent);
+
+        if (onTextExtracted) {
+          onTextExtracted(textContent);
+        }
+
+        const detectedPrices = extractPricesFromText(textContent);
+        if (onPricesDetected && detectedPrices.length > 0) {
+          onPricesDetected(detectedPrices);
+        }
       }
     } catch (error) {
       console.error('Error parsing RTF:', error);

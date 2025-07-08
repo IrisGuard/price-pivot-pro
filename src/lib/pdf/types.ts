@@ -1,9 +1,3 @@
-export interface InteractivePDFOptions {
-  factoryPdfBytes: Uint8Array;
-  bannerImageBytes?: Uint8Array;
-  percentage: number;
-}
-
 export interface PriceInfo {
   value: number;
   x: number;
@@ -15,4 +9,35 @@ export interface PriceMetadata {
   prices: PriceInfo[];
   security: string;
   timestamp: number;
+}
+
+export interface InteractivePDFOptions {
+  factoryPdfBytes: Uint8Array;
+  percentage: number;
+  bannerImageBytes?: Uint8Array;
+}
+
+export interface ProcessingProgress {
+  stage: string;
+  progress: number;
+  message: string;
+}
+
+export interface RTFParseResult {
+  text: string;
+  prices: PriceInfo[];
+  formatting?: {
+    bold: boolean;
+    italic: boolean;
+    fontSize: number;
+    fontFamily: string;
+  };
+}
+
+export interface FileProcessingResult {
+  success: boolean;
+  text?: string;
+  prices?: PriceInfo[];
+  error?: string;
+  fileType: 'pdf' | 'rtf';
 }

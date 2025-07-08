@@ -5,20 +5,35 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// Enhanced PDF.js worker setup with multiple fallback strategies
+// COMPLETE PDF.js WORKER SETUP - MULTIPLE STRATEGIES
 const setupPDFWorker = () => {
+  console.log('🔧 Setting up PDF.js worker...');
+  
   try {
-    // Try using the installed version first
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-    console.log('PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+    // Strategy 1: Use local worker file
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
+    console.log('✅ Using local PDF worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+    return true;
   } catch (error) {
-    console.warn('Primary PDF.js worker failed, trying fallback');
+    console.warn('❌ Local worker failed, trying CDN fallback');
+    
     try {
-      // Fallback to specific version
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.js';
+      // Strategy 2: Use versioned CDN
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+      console.log('⚠️ Using CDN worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+      return true;
     } catch (fallbackError) {
-      console.error('All PDF.js worker setups failed:', fallbackError);
-      // Will use native browser display as final fallback
+      console.error('❌ All PDF.js worker setups failed:', fallbackError);
+      
+      try {
+        // Strategy 3: Generic CDN fallback
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        console.log('🆘 Using generic CDN worker fallback');
+        return true;
+      } catch (finalError) {
+        console.error('💥 Complete PDF.js worker failure');
+        return false;
+      }
     }
   }
 };
@@ -145,22 +160,37 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
       setPdfUrl(url);
       
       try {
-        console.log('Loading PDF with PDF.js...');
+        console.log('🔄 Loading PDF with PDF.js...');
         const arrayBuffer = await pdfFile.arrayBuffer();
-        console.log('PDF arrayBuffer size:', arrayBuffer.byteLength);
+        console.log('📄 PDF arrayBuffer size:', arrayBuffer.byteLength);
         
+        // Enhanced loading with retries
         const loadingTask = pdfjsLib.getDocument({ 
           data: arrayBuffer,
-          verbosity: pdfjsLib.VerbosityLevel.WARNINGS
+          verbosity: pdfjsLib.VerbosityLevel.WARNINGS,
+          useSystemFonts: true,
+          standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/web/`,
+          cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
+          cMapPacked: true
         });
         
+        // Monitor loading progress
+        loadingTask.onProgress = (progress: any) => {
+          console.log(`📊 PDF Loading: ${progress.loaded}/${progress.total}`);
+        };
+        
         const doc = await loadingTask.promise;
-        console.log('PDF loaded successfully, pages:', doc.numPages);
+        console.log('✅ PDF loaded successfully, pages:', doc.numPages);
+        
+        if (doc.numPages === 0) {
+          throw new Error('PDF has no pages');
+        }
         
         setPdfDoc(doc);
         setTotalPages(doc.numPages);
         setCurrentPage(1);
         setError(null);
+        setUseFallback(false);
       } catch (error) {
         console.error('PDF.js loading failed:', error);
         setError('Σφάλμα φόρτωσης PDF με PDF.js - χρήση εναλλακτικής προβολής');
