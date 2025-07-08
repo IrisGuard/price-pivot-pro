@@ -78,7 +78,7 @@ export const HybridPDFViewer = ({
         )}
         
         {/* PDF.js Renderer */}
-        {!useNativeFallback && pdfDoc && !loading && (
+        {pdfDoc && !loading && (
           <PDFCanvasRenderer
             pdfDoc={pdfDoc}
             scale={scale}
@@ -86,17 +86,21 @@ export const HybridPDFViewer = ({
             onTextExtracted={onTextExtracted}
             onPricesDetected={onPricesDetected}
             onRenderComplete={(success) => {
-              if (!success && pdfUrl) {
-                setForceNativeFallback(true);
-              }
+              // Keep retrying with PDF.js instead of falling back to native viewer
+              console.log('PDF render complete:', success);
             }}
           />
         )}
         
-        {/* Browser Native Fallback */}
-        {useNativeFallback && pdfUrl && !loading && (
-          <div className="bg-white shadow-2xl border border-border print:shadow-none print:border-none" style={{ width: '210mm', minHeight: '297mm' }}>
-            <PDFBrowserFallback pdfUrl={pdfUrl} />
+        {/* No PDF loaded state */}
+        {!pdfDoc && !loading && (
+          <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '297mm' }}>
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-muted-foreground">
+                <p className="text-lg">Φόρτωση PDF...</p>
+                <p className="text-sm">Παρακαλώ περιμένετε</p>
+              </div>
+            </div>
           </div>
         )}
       </div>

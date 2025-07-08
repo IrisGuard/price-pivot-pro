@@ -109,8 +109,13 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
               />
             )}
             
-            {(!pdfDoc && pdfUrl && !loading) && (
-              <PDFBrowserFallback pdfUrl={pdfUrl} />
+            {(!pdfDoc && !loading) && (
+              <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
+                <div className="text-center text-muted-foreground">
+                  <p className="text-lg">Φόρτωση PDF...</p>
+                  <p className="text-sm">Παρακαλώ περιμένετε</p>
+                </div>
+              </Card>
             )}
           </div>
 

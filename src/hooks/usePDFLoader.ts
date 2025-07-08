@@ -41,7 +41,10 @@ export const usePDFLoader = (pdfFile: File | null) => {
               data: arrayBuffer,
               verbosity: pdfjsLib.VerbosityLevel.ERRORS,
               disableAutoFetch: false,
-              disableStream: false
+              disableStream: false,
+              useSystemFonts: true,
+              standardFontDataUrl: '/fonts/',
+              useWorkerFetch: false
             });
             
             const doc = await loadingTask.promise;
@@ -52,7 +55,7 @@ export const usePDFLoader = (pdfFile: File | null) => {
             
             return doc;
           } catch (error) {
-            if (attempt < 3) {
+            if (attempt < 5) {
               // Wait and retry with different config
               await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
               return loadWithRetry(attempt + 1);
