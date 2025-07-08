@@ -169,27 +169,90 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
       
       {/* Control Page at the end */}
       {renderedPages.length > 0 && (
-        <PDFPageWithControls 
-          pageWidth={renderedPages[0]?.width || 595}
-          showControls={true}
-          isAdminMode={true}
-          onPercentageChange={(percentage) => {
-            console.log('🔢 Percentage change requested:', percentage);
-            // TODO: Integrate with PDF price processor
-          }}
-          onBannerChange={(file) => {
-            console.log('🖼️ Banner change requested:', file.name);
-            // TODO: Integrate with PDF banner processor
-          }}
-          onCustomerDataChange={(data) => {
-            console.log('👤 Customer data change:', data);
-            // TODO: Integrate with PDF customer data processor
-          }}
-          onExportCleanPDF={() => {
-            console.log('📄 Clean PDF export requested');
-            // TODO: Export PDF without control page
-          }}
-        />
+        <div className="bg-white border shadow-sm mx-auto block mb-4 p-8" style={{ width: (renderedPages[0]?.width || 595) + 'px', minHeight: '842px' }}>
+          <div className="text-center space-y-6">
+            <h1 className="text-2xl font-bold text-blue-700 mb-8">🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ</h1>
+            
+            <div className="space-y-6">
+              <div className="bg-gray-50 p-4 rounded border">
+                <h3 className="font-bold text-lg mb-3">1. ΑΛΛΑΓΗ ΠΟΣΟΣΤΟΥ ΤΙΜΩΝ</h3>
+                <div className="flex items-center justify-center gap-3">
+                  <input 
+                    type="number" 
+                    placeholder="+10 ή -15" 
+                    className="border px-3 py-2 w-24 text-center" 
+                    id="percentageInput"
+                  />
+                  <button 
+                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                    onClick={() => {
+                      const input = document.querySelector('#percentageInput') as HTMLInputElement;
+                      const percentage = parseFloat(input.value);
+                      if (!isNaN(percentage)) {
+                        alert(`Εφαρμογή ποσοστού: ${percentage}%`);
+                      }
+                    }}
+                  >
+                    ΕΦΑΡΜΟΓΗ
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded border">
+                <h3 className="font-bold text-lg mb-3">2. ΑΛΛΑΓΗ BANNER/ΛΟΓΟΤΥΠΟΥ</h3>
+                <div className="flex items-center justify-center gap-3">
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    id="bannerInput"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        alert(`Νέο banner: ${file.name}`);
+                      }
+                    }}
+                  />
+                  <button 
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                    onClick={() => {
+                      const input = document.querySelector('#bannerInput') as HTMLInputElement;
+                      input?.click();
+                    }}
+                  >
+                    ΑΛΛΑΓΗ BANNER
+                  </button>
+                  <button 
+                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
+                    onClick={() => alert('Αφαίρεση banner')}
+                  >
+                    ΑΦΑΙΡΕΣΗ BANNER
+                  </button>
+                </div>
+              </div>
+              
+              <div className="bg-gray-50 p-4 rounded border">
+                <h3 className="font-bold text-lg mb-3">3. ΣΥΜΠΛΗΡΩΣΗ ΣΤΟΙΧΕΙΩΝ ΠΕΛΑΤΗ</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <input type="text" placeholder="Ονοματεπώνυμο" className="border px-3 py-2" id="customerName" />
+                  <input type="text" placeholder="Επάγγελμα" className="border px-3 py-2" id="customerJob" />
+                  <input type="text" placeholder="ΑΦΜ" className="border px-3 py-2" id="customerTax" />
+                  <input type="text" placeholder="Τηλέφωνο" className="border px-3 py-2" id="customerPhone" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-yellow-50 p-4 rounded border border-yellow-300 text-left">
+              <h4 className="font-bold text-yellow-800 mb-2">ΟΔΗΓΙΕΣ ΧΡΗΣΗΣ:</h4>
+              <ul className="text-sm text-yellow-700 space-y-1">
+                <li>• Για αλλαγή τιμών: Εισάγετε ποσοστό (π.χ. +10, -15) και πατήστε "ΕΦΑΡΜΟΓΗ"</li>
+                <li>• Για αλλαγή banner: Πατήστε "ΑΛΛΑΓΗ BANNER" και επιλέξτε εικόνα</li>
+                <li>• Συμπληρώστε τα στοιχεία σας στα αντίστοιχα πεδία</li>
+                <li>• Μετά τις αλλαγές, χρησιμοποιήστε Ctrl+P για εκτύπωση</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       )}
     </Card>
   );

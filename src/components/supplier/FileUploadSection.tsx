@@ -1,14 +1,17 @@
 import { Upload } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useRef } from "react";
 
 interface FileUploadSectionProps {
   onFileChange: (file: File | null) => void;
 }
 
 export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleFileSelect = (file: File) => {
-    console.log('🔥 FILE SELECTED - SIMPLIFIED VERSION!');
+    console.log('🔥 FILE SELECTED!');
     console.log('📁 File details:', {
       name: file.name,
       size: file.size,
@@ -29,28 +32,22 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
     onFileChange(file);
   };
 
-  const handleDirectClick = () => {
-    console.log('🔘 BUTTON CLICKED - Creating direct input');
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.pdf,.rtf';
-    
-    // Use addEventListener instead of onchange for better cross-browser support
-    input.addEventListener('change', (e) => {
-      console.log('🔥 DIRECT INPUT CHANGE FIRED!');
-      const target = e.target as HTMLInputElement;
-      if (target.files && target.files.length > 0) {
-        console.log('📁 File found:', target.files[0].name);
-        handleFileSelect(target.files[0]);
-      } else {
-        console.log('❌ No files in direct input');
-      }
-      // Clean up the input element
-      input.remove();
-    });
-    
-    console.log('🖱️ Triggering click on dynamic input');
-    input.click();
+  const handleButtonClick = () => {
+    console.log('🔘 BUTTON CLICKED - Triggering file input');
+    fileInputRef.current?.click();
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('🔥 FILE INPUT CHANGE FIRED!');
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      console.log('📁 File found:', files[0].name);
+      handleFileSelect(files[0]);
+    } else {
+      console.log('❌ No files selected');
+    }
+    // Reset input value for re-selection
+    e.target.value = '';
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -87,8 +84,17 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
             </div>
             
             <div className="space-y-4">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.rtf"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+              
               <Button 
-                onClick={handleDirectClick}
+                onClick={handleButtonClick}
                 className="w-full" 
                 size="lg"
                 variant="default"

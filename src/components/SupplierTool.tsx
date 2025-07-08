@@ -50,25 +50,27 @@ const SupplierTool = () => {
       </div>
 
       {/* Main Content */}
-      {!factoryFile ? (
-        <>
-          {console.log('🔍 RENDER: No factoryFile, showing upload section')}
+      <div className="min-h-screen">
+        {!factoryFile ? (
           <FileUploadSection onFileChange={handleFactoryFileChange} />
-        </>
-      ) : (
-        <>
-          {console.log('🔍 RENDER: factoryFile exists, showing preview:', factoryFile.name)}
-          <FilePreviewSection 
-            file={factoryFile}
-            onPricesDetected={handlePricesDetected}
-          />
-          <ControlPanel
-            percentage={percentage}
-            isProcessing={isProcessing}
-            onPercentageChange={setPercentage}
-            onCreateQuotation={handleCreateQuotation}
-          />
-        </>
+        ) : (
+          <div className="pb-20">
+            <FilePreviewSection 
+              file={factoryFile}
+              onPricesDetected={handlePricesDetected}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Control Panel - Fixed at bottom when file is loaded */}
+      {factoryFile && (
+        <ControlPanel
+          percentage={percentage}
+          isProcessing={isProcessing}
+          onPercentageChange={setPercentage}
+          onCreateQuotation={handleCreateQuotation}
+        />
       )}
     </div>
   );
