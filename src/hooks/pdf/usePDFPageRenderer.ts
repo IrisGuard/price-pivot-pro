@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { realPriceDetector } from '@/lib/pdf/realPriceDetector';
 
 interface RenderPageOptions {
   page: pdfjsLib.PDFPageProxy;
@@ -55,7 +56,7 @@ export const usePDFPageRenderer = () => {
     
     onCanvasReady(canvas);
 
-    // Extract text content and prices with real detection
+    // Extract text content and prices using real price detector
     let textContent = '';
     let prices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
 
@@ -68,37 +69,30 @@ export const usePDFPageRenderer = () => {
 
       textContent = textItems;
 
-      // Real price detection using enhanced patterns
-      const pricePatterns = [
-        /€\s*(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})/g,
-        /(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\s*€/g,
-        /\b(\d{1,3}(?:[.,]\d{3})*[.,]\d{2})\b/g,
-        /€\s*(\d+)/g,
-        /(\d+)\s*€/g
-      ];
+      // Use real price detector for accurate detection
+      const textItemsWithPos = textData.items
+        .filter((item): item is any => 'str' in item && 'transform' in item)
+        .map((item: any) => ({
+          text: item.str,
+          x: item.transform[4],
+          y: item.transform[5],
+          width: item.width,
+          height: item.height
+        }));
 
-      const foundPrices = new Set<number>();
-      
-      pricePatterns.forEach((pattern, patternIndex) => {
-        const regex = new RegExp(pattern.source, pattern.flags);
-        let match;
-        
-        while ((match = regex.exec(textItems)) !== null) {
-          const priceStr = match[1] || match[0];
-          const cleanedPrice = priceStr.replace(/[^\d.,]/g, '').replace(',', '.');
-          const value = parseFloat(cleanedPrice);
-          
-          if (!isNaN(value) && value > 0 && value < 100000 && !foundPrices.has(value)) {
-            foundPrices.add(value);
-            prices.push({
-              value,
-              x: 450 + (prices.length * 30),
-              y: 650 - prices.length * 25,
-              pageIndex: pageNum - 1
-            });
-          }
-        }
-      });
+      // Extract prices using the real detector
+      const detectedPrices = realPriceDetector.extractPricesFromTextItems(textItemsWithPos, pageNum - 1);
+      prices = detectedPrices.map(price => ({
+        value: price.value,
+        x: price.x,
+        y: price.y,
+        pageIndex: price.pageIndex
+      }));
+
+      console.log(`Page ${pageNum}: Found ${prices.length} prices`);
+      if (prices.length > 0) {
+        console.log('Detected prices:', prices.slice(0, 3));
+      }
 
     } catch (textError) {
       console.warn(`Failed to extract text from page ${pageNum}:`, textError);

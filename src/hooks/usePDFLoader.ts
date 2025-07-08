@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker
+// Configure PDF.js worker with fallback
 if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
+  try {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
+    console.log('PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+  } catch (error) {
+    console.warn('PDF.js worker configuration failed:', error);
+    // Fallback to CDN worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
+  }
 }
 
 export const usePDFLoader = (pdfFile: File | null) => {

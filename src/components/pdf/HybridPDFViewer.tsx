@@ -26,7 +26,9 @@ export const HybridPDFViewer = ({
   // Auto-fallback to browser native if PDF.js fails repeatedly
   useEffect(() => {
     if (error && pdfUrl && !forceNativeFallback) {
+      console.log('PDF.js failed, enabling fallback in 2 seconds...');
       const timer = setTimeout(() => {
+        console.log('Activating browser native fallback');
         setForceNativeFallback(true);
       }, 2000);
       return () => clearTimeout(timer);
@@ -48,6 +50,18 @@ export const HybridPDFViewer = ({
   }
 
   const useNativeFallback = forceNativeFallback || (!pdfDoc && pdfUrl && !loading && error);
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('HybridPDFViewer state:', { 
+      pdfDoc: !!pdfDoc, 
+      loading, 
+      error, 
+      pdfUrl: !!pdfUrl, 
+      useNativeFallback,
+      forceNativeFallback 
+    });
+  }, [pdfDoc, loading, error, pdfUrl, useNativeFallback, forceNativeFallback]);
 
   return (
     <div className="w-full bg-background py-8">

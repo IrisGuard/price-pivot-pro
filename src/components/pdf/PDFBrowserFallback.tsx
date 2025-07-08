@@ -69,27 +69,37 @@ export const PDFBrowserFallback = ({ pdfUrl, onTextExtracted, onPricesDetected }
   }
 
   return (
-    <Card className="w-full border shadow-sm">
-      <iframe
-        src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
-        className="w-full h-[800px] border-0 rounded-lg"
+    <div className="w-full" style={{ width: '210mm' }}>
+      <div 
+        className="bg-white shadow-2xl border border-border rounded-lg"
         style={{ 
-          minHeight: '600px',
-          overflow: 'hidden'
+          width: '210mm',
+          minHeight: '297mm'
         }}
-        title="PDF Preview"
-        onError={() => setEmbedSupported(false)}
-      />
-      <div className="p-4 border-t bg-gray-50 flex gap-2 justify-end">
-        <Button size="sm" variant="outline" onClick={handleOpenInNewTab} className="gap-2">
-          <ExternalLink className="h-4 w-4" />
-          Άνοιγμα σε Νέα Καρτέλα
-        </Button>
-        <Button size="sm" variant="outline" onClick={handleDownload} className="gap-2">
-          <Download className="h-4 w-4" />
-          Λήψη PDF
-        </Button>
+      >
+        <iframe
+          src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
+          className="w-full border-0 rounded-lg"
+          style={{ 
+            width: '100%',
+            height: '800px',
+            minHeight: '600px',
+            overflow: 'hidden'
+          }}
+          title="PDF Preview"
+          onError={() => setEmbedSupported(false)}
+        />
+        <div className="p-4 border-t bg-muted/20 flex gap-2 justify-end">
+          <Button size="sm" variant="outline" onClick={handleOpenInNewTab} className="gap-2">
+            <ExternalLink className="h-4 w-4" />
+            Άνοιγμα σε Νέα Καρτέλα
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleDownload} className="gap-2">
+            <Download className="h-4 w-4" />
+            Λήψη PDF
+          </Button>
+        </div>
       </div>
-    </Card>
+    </div>
   );
 };

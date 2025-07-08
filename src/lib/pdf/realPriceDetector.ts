@@ -41,7 +41,7 @@ export class RealPriceDetector {
     return this.deduplicatePrices(allPrices);
   }
 
-  private extractPricesFromTextItems(textItems: any[], pageIndex: number): DetectedPrice[] {
+  public extractPricesFromTextItems(textItems: any[], pageIndex: number): DetectedPrice[] {
     const prices: DetectedPrice[] = [];
     const pricePatterns = [
       // European format with euro symbol
