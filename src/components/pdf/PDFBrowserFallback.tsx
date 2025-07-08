@@ -5,9 +5,11 @@ import { ExternalLink, Download } from 'lucide-react';
 
 interface PDFBrowserFallbackProps {
   pdfUrl: string;
+  onTextExtracted?: (text: string) => void;
+  onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
 }
 
-export const PDFBrowserFallback = ({ pdfUrl }: PDFBrowserFallbackProps) => {
+export const PDFBrowserFallback = ({ pdfUrl, onTextExtracted, onPricesDetected }: PDFBrowserFallbackProps) => {
   const [embedSupported, setEmbedSupported] = useState(true);
 
   useEffect(() => {

@@ -47,7 +47,7 @@ export const HybridPDFViewer = ({
     );
   }
 
-  const useNativeFallback = forceNativeFallback || (!pdfDoc && pdfUrl && !loading);
+  const useNativeFallback = forceNativeFallback || (!pdfDoc && pdfUrl && !loading && error);
 
   return (
     <div className="w-full bg-background py-8">
@@ -77,7 +77,7 @@ export const HybridPDFViewer = ({
           </div>
         )}
         
-        {/* PDF.js Renderer */}
+        {/* PDF.js Renderer - Primary Method */}
         {pdfDoc && !loading && (
           <PDFCanvasRenderer
             pdfDoc={pdfDoc}
@@ -86,14 +86,25 @@ export const HybridPDFViewer = ({
             onTextExtracted={onTextExtracted}
             onPricesDetected={onPricesDetected}
             onRenderComplete={(success) => {
-              // Keep retrying with PDF.js instead of falling back to native viewer
-              console.log('PDF render complete:', success);
+              if (!success) {
+                console.warn('PDF.js rendering failed, enabling fallback');
+                setForceNativeFallback(true);
+              }
             }}
           />
         )}
         
+        {/* Native Browser Fallback */}
+        {useNativeFallback && pdfUrl && (
+          <PDFBrowserFallback 
+            pdfUrl={pdfUrl} 
+            onTextExtracted={onTextExtracted}
+            onPricesDetected={onPricesDetected}
+          />
+        )}
+        
         {/* No PDF loaded state */}
-        {!pdfDoc && !loading && (
+        {!pdfDoc && !pdfUrl && !loading && (
           <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '297mm' }}>
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-muted-foreground">
