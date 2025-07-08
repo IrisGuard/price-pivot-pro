@@ -47,15 +47,12 @@ interface PDFViewerProps {
 }
 
 export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFViewerProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const objectRef = useRef<HTMLObjectElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [scale, setScale] = useState(1.2);
+  const [renderedPages, setRenderedPages] = useState<HTMLCanvasElement[]>([]);
+  const [scale, setScale] = useState(1.0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [useFallback, setUseFallback] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
 
   const extractPricesFromText = useCallback((text: string, pageIndex: number) => {
@@ -100,46 +97,60 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
     return prices.sort((a, b) => a.value - b.value);
   }, []);
 
-  const renderPage = useCallback(async (pageNum: number) => {
-    if (!pdfDoc || !canvasRef.current) return;
+  const renderAllPages = useCallback(async () => {
+    if (!pdfDoc || !containerRef.current) return;
 
     setLoading(true);
     try {
-      const page = await pdfDoc.getPage(pageNum);
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      
-      if (!ctx) return;
+      const pages: HTMLCanvasElement[] = [];
+      let allText = '';
+      let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
 
-      const viewport = page.getViewport({ scale });
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+      for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) continue;
 
-      const renderContext = {
-        canvasContext: ctx,
-        viewport: viewport,
-      };
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.className = 'border shadow-sm bg-white mb-4 mx-auto block';
 
-      await page.render(renderContext).promise;
+        const renderContext = {
+          canvasContext: ctx,
+          viewport: viewport,
+        };
 
-      // Extract text content for price detection
-      const textContent = await page.getTextContent();
-      const textItems = textContent.items
-        .filter((item): item is any => 'str' in item)
-        .map((item: any) => item.str)
-        .join(' ');
+        await page.render(renderContext).promise;
+        pages.push(canvas);
+
+        // Extract text content for price detection
+        const textContent = await page.getTextContent();
+        const textItems = textContent.items
+          .filter((item): item is any => 'str' in item)
+          .map((item: any) => item.str)
+          .join(' ');
+
+        allText += textItems + ' ';
+
+        // Extract prices from this page
+        const pagePrices = extractPricesFromText(textItems, pageNum - 1);
+        allPrices = [...allPrices, ...pagePrices];
+      }
+
+      setRenderedPages(pages);
 
       if (onTextExtracted) {
-        onTextExtracted(textItems);
+        onTextExtracted(allText);
       }
 
-      // Extract prices and their approximate positions
-      const detectedPrices = extractPricesFromText(textItems, pageNum - 1);
-      if (onPricesDetected && detectedPrices.length > 0) {
-        onPricesDetected(detectedPrices);
+      if (onPricesDetected && allPrices.length > 0) {
+        onPricesDetected(allPrices);
       }
     } catch (error) {
-      console.error('Error rendering page:', error);
+      console.error('Error rendering pages:', error);
     }
     setLoading(false);
   }, [pdfDoc, scale, onTextExtracted, onPricesDetected, extractPricesFromText]);
@@ -153,7 +164,6 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
     const loadPDF = async () => {
       setLoading(true);
       setError(null);
-      setUseFallback(false);
       
       // Create blob URL for fallback display
       const url = URL.createObjectURL(pdfFile);
@@ -187,16 +197,11 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         }
         
         setPdfDoc(doc);
-        setTotalPages(doc.numPages);
-        setCurrentPage(1);
         setError(null);
-        setUseFallback(false);
       } catch (error) {
         console.error('PDF.js loading failed:', error);
-        setError('Σφάλμα φόρτωσης PDF με PDF.js - χρήση εναλλακτικής προβολής');
-        setUseFallback(true);
+        setError('Σφάλμα φόρτωσης PDF με PDF.js');
         setPdfDoc(null);
-        setTotalPages(0);
         
         // Extract text using fallback method for price detection
         try {
@@ -228,20 +233,76 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
 
   useEffect(() => {
     if (pdfDoc) {
-      renderPage(currentPage);
+      renderAllPages();
     }
-  }, [pdfDoc, currentPage, scale, renderPage]);
+  }, [pdfDoc, scale, renderAllPages]);
 
-  const nextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
+  useEffect(() => {
+    if (renderedPages.length > 0 && containerRef.current) {
+      // Clear container and add all rendered pages
+      containerRef.current.innerHTML = '';
+      renderedPages.forEach(canvas => {
+        containerRef.current?.appendChild(canvas);
+      });
+      
+      // Add control page at the end
+      addControlPage();
     }
-  };
+  }, [renderedPages]);
 
-  const prevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
+  const addControlPage = () => {
+    if (!containerRef.current) return;
+
+    const controlDiv = document.createElement('div');
+    controlDiv.className = 'bg-white border shadow-sm mx-auto block mb-4 p-8';
+    controlDiv.style.width = renderedPages[0]?.width + 'px' || '595px';
+    controlDiv.style.minHeight = '842px'; // A4 height
+    
+    controlDiv.innerHTML = `
+      <div class="text-center space-y-6">
+        <h1 class="text-2xl font-bold text-blue-700 mb-8">🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ</h1>
+        
+        <div class="space-y-6">
+          <div class="bg-gray-50 p-4 rounded border">
+            <h3 class="font-bold text-lg mb-3">1. ΑΛΛΑΓΗ ΠΟΣΟΣΤΟΥ ΤΙΜΩΝ</h3>
+            <div class="flex items-center justify-center gap-3">
+              <input type="number" placeholder="+10 ή -15" class="border px-3 py-2 w-24 text-center" id="percentageInput">
+              <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onclick="applyPercentage()">ΕΦΑΡΜΟΓΗ</button>
+            </div>
+          </div>
+          
+          <div class="bg-gray-50 p-4 rounded border">
+            <h3 class="font-bold text-lg mb-3">2. ΑΛΛΑΓΗ BANNER/ΛΟΓΟΤΥΠΟΥ</h3>
+            <div class="flex items-center justify-center gap-3">
+              <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="changeBanner()">ΑΛΛΑΓΗ BANNER</button>
+              <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700" onclick="removeBanner()">ΑΦΑΙΡΕΣΗ BANNER</button>
+            </div>
+          </div>
+          
+          <div class="bg-gray-50 p-4 rounded border">
+            <h3 class="font-bold text-lg mb-3">3. ΣΥΜΠΛΗΡΩΣΗ ΣΤΟΙΧΕΙΩΝ ΠΕΛΑΤΗ</h3>
+            <div class="grid grid-cols-2 gap-4">
+              <input type="text" placeholder="Ονοματεπώνυμο" class="border px-3 py-2" id="customerName">
+              <input type="text" placeholder="Επάγγελμα" class="border px-3 py-2" id="customerJob">
+              <input type="text" placeholder="ΑΦΜ" class="border px-3 py-2" id="customerTax">
+              <input type="text" placeholder="Τηλέφωνο" class="border px-3 py-2" id="customerPhone">
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg-yellow-50 p-4 rounded border border-yellow-300 text-left">
+          <h4 class="font-bold text-yellow-800 mb-2">ΟΔΗΓΙΕΣ ΧΡΗΣΗΣ:</h4>
+          <ul class="text-sm text-yellow-700 space-y-1">
+            <li>• Για αλλαγή τιμών: Εισάγετε ποσοστό (π.χ. +10, -15) και πατήστε "ΕΦΑΡΜΟΓΗ"</li>
+            <li>• Για αλλαγή banner: Πατήστε "ΑΛΛΑΓΗ BANNER" και επιλέξτε εικόνα</li>
+            <li>• Συμπληρώστε τα στοιχεία σας στα αντίστοιχα πεδία</li>
+            <li>• Μετά τις αλλαγές, χρησιμοποιήστε Αρχείο → Αποθήκευση ή Εκτύπωση</li>
+          </ul>
+        </div>
+      </div>
+    `;
+    
+    containerRef.current.appendChild(controlDiv);
   };
 
   const zoomIn = () => {
@@ -268,15 +329,9 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
       {/* PDF Controls */}
       <div className="flex items-center justify-between p-4 border-b bg-muted/50">
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={prevPage} disabled={currentPage === 1}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
           <span className="text-sm font-medium">
-            {currentPage} / {totalPages}
+            {pdfDoc ? `${pdfDoc.numPages} σελίδες` : 'Φόρτωση...'}
           </span>
-          <Button variant="outline" size="sm" onClick={nextPage} disabled={currentPage === totalPages}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
         </div>
         
         <div className="flex items-center gap-2">
@@ -300,7 +355,7 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         </Alert>
       )}
 
-      {/* PDF Content */}
+      {/* PDF Content - All pages displayed one below another */}
       <div className="flex-1 overflow-auto bg-muted/20">
         <div className="flex justify-center p-4 relative">
           {loading && (
@@ -312,22 +367,15 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
             </div>
           )}
           
-          {!useFallback && !loading && (
-            <canvas
-              ref={canvasRef}
-              className="border shadow-lg bg-white"
-              style={{ 
-                maxWidth: '100%', 
-                height: 'auto',
-                display: pdfDoc ? 'block' : 'none'
-              }}
-            />
-          )}
+          <div 
+            ref={containerRef}
+            className="w-full max-w-4xl"
+            style={{ maxWidth: '100%' }}
+          />
           
-          {(useFallback || (!pdfDoc && !loading)) && pdfUrl && (
+          {(!pdfDoc && !loading && pdfUrl) && (
             <div className="w-full max-w-4xl">
               <object
-                ref={objectRef}
                 data={pdfUrl}
                 type="application/pdf"
                 className="w-full h-[800px] border shadow-lg"
