@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 
 interface PDFCanvasRendererOptions {
@@ -13,28 +13,74 @@ interface PDFCanvasRendererOptions {
 export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
   const { pdfDoc, scale, currentPageIndex = -1, onTextExtracted, onPricesDetected, onRenderComplete } = options;
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastRenderedRef = useRef<{ pdfDoc: pdfjsLib.PDFDocumentProxy | null; scale: number; numPages: number } | null>(null);
+  const canvasesRef = useRef<HTMLCanvasElement[]>([]);
+
+  // Memoized callbacks to prevent infinite re-renders
+  const stableOnTextExtracted = useCallback((text: string) => {
+    if (onTextExtracted) onTextExtracted(text);
+  }, [onTextExtracted]);
+
+  const stableOnPricesDetected = useCallback((prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => {
+    if (onPricesDetected) onPricesDetected(prices);
+  }, [onPricesDetected]);
+
+  const stableOnRenderComplete = useCallback((success: boolean) => {
+    if (onRenderComplete) onRenderComplete(success);
+  }, [onRenderComplete]);
+
+  // Check if we need to re-render (avoid unnecessary renders)
+  const shouldRender = useMemo(() => {
+    if (!pdfDoc) return false;
+    
+    const current = lastRenderedRef.current;
+    return !current || 
+           current.pdfDoc !== pdfDoc || 
+           Math.abs(current.scale - scale) > 0.01 || 
+           current.numPages !== pdfDoc.numPages;
+  }, [pdfDoc, scale]);
+
+  // Cleanup function
+  const cleanup = useCallback(() => {
+    const container = containerRef.current;
+    if (container) {
+      // Clear canvases properly
+      canvasesRef.current.forEach(canvas => {
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      });
+      container.innerHTML = '';
+      canvasesRef.current = [];
+    }
+  }, []);
 
   useEffect(() => {
-    if (!pdfDoc || !containerRef.current) {
-      if (onRenderComplete) onRenderComplete(false);
+    if (!pdfDoc || !containerRef.current || !shouldRender) {
+      if (!pdfDoc && stableOnRenderComplete) {
+        stableOnRenderComplete(false);
+      }
       return;
     }
 
+    let isCancelled = false;
+
     const renderPages = async () => {
       const container = containerRef.current;
-      if (!container) return;
+      if (!container || isCancelled) return;
 
-      // Clear previous content
-      container.innerHTML = '';
+      // Clean up previous render
+      cleanup();
       
       let allText = '';
       let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+      const newCanvases: HTMLCanvasElement[] = [];
 
       try {
-        // Always render all pages for continuous viewing
-        const pagesToRender = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
-
-        for (const pageNum of pagesToRender) {
+        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+          if (isCancelled) break;
+          
           const page = await pdfDoc.getPage(pageNum);
           const viewport = page.getViewport({ scale });
           
@@ -65,50 +111,66 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
 
           await page.render(renderContext).promise;
           
-          // Add canvas to container
-          container.appendChild(canvas);
+          if (!isCancelled) {
+            // Add canvas to container and tracking
+            container.appendChild(canvas);
+            newCanvases.push(canvas);
 
-          // Extract text content for processing
-          try {
-            const textContent = await page.getTextContent();
-            const textItems = textContent.items
-              .filter((item): item is any => 'str' in item)
-              .map((item: any) => item.str)
-              .join(' ');
+            // Extract text content for processing
+            try {
+              const textContent = await page.getTextContent();
+              const textItems = textContent.items
+                .filter((item): item is any => 'str' in item)
+                .map((item: any) => item.str)
+                .join(' ');
 
-            allText += textItems + ' ';
+              allText += textItems + ' ';
 
-            // Extract prices from this page (simple pattern matching)
-            const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
-            const pagePrices = priceMatches.map((match, index) => ({
-              value: parseFloat(match.replace(',', '.')),
-              x: 450 + (index * 30),
-              y: 650 - index * 25,
-              pageIndex: pageNum - 1
-            }));
-            
-            allPrices = [...allPrices, ...pagePrices];
-          } catch (textError) {
-            // Continue without text extraction if it fails
+              // Extract prices from this page (simple pattern matching)
+              const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
+              const pagePrices = priceMatches.map((match, index) => ({
+                value: parseFloat(match.replace(',', '.')),
+                x: 450 + (index * 30),
+                y: 650 - index * 25,
+                pageIndex: pageNum - 1
+              }));
+              
+              allPrices = [...allPrices, ...pagePrices];
+            } catch (textError) {
+              // Continue without text extraction if it fails
+            }
           }
         }
 
-        // Call callbacks with extracted data
-        if (onTextExtracted && allText) {
-          onTextExtracted(allText);
-        }
-        if (onPricesDetected && allPrices.length > 0) {
-          onPricesDetected(allPrices);
-        }
+        if (!isCancelled) {
+          // Update tracking
+          canvasesRef.current = newCanvases;
+          lastRenderedRef.current = { pdfDoc, scale, numPages: pdfDoc.numPages };
 
-        if (onRenderComplete) onRenderComplete(true);
+          // Call callbacks with extracted data
+          if (allText) {
+            stableOnTextExtracted(allText);
+          }
+          if (allPrices.length > 0) {
+            stableOnPricesDetected(allPrices);
+          }
+
+          stableOnRenderComplete(true);
+        }
       } catch (renderError) {
-        if (onRenderComplete) onRenderComplete(false);
+        if (!isCancelled) {
+          stableOnRenderComplete(false);
+        }
       }
     };
 
     renderPages();
-  }, [pdfDoc, scale, currentPageIndex, onTextExtracted, onPricesDetected, onRenderComplete]);
+
+    // Cleanup function for useEffect
+    return () => {
+      isCancelled = true;
+    };
+  }, [pdfDoc, scale, shouldRender, cleanup, stableOnTextExtracted, stableOnPricesDetected, stableOnRenderComplete]);
 
   return { containerRef };
 };

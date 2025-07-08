@@ -36,6 +36,15 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
     setPagesRendered(success);
   }, []);
 
+  // Stable callbacks to prevent infinite re-renders
+  const stableOnTextExtracted = useCallback((text: string) => {
+    if (onTextExtracted) onTextExtracted(text);
+  }, [onTextExtracted]);
+
+  const stableOnPricesDetected = useCallback((prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => {
+    if (onPricesDetected) onPricesDetected(prices);
+  }, [onPricesDetected]);
+
   if (!pdfFile) {
     return (
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
@@ -86,8 +95,8 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
                   pdfDoc={pdfDoc}
                   scale={scale}
                   loading={loading}
-                  onTextExtracted={onTextExtracted}
-                  onPricesDetected={onPricesDetected}
+                  onTextExtracted={stableOnTextExtracted}
+                  onPricesDetected={stableOnPricesDetected}
                   onRenderComplete={handleRenderComplete}
                 />
               )}
