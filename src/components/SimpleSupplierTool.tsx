@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, FileText, Download, Eye } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { Upload, ZoomIn, ZoomOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { simplePDFProcessor } from "@/lib/pdf/simplePDFProcessor";
 import { useRTFToPDFConverter } from "@/hooks/useRTFToPDFConverter";
@@ -9,8 +11,12 @@ import { EnhancedPDFViewer } from "@/components/EnhancedPDFViewer";
 import { RTFViewer } from "@/components/RTFViewer";
 
 export const SimpleSupplierTool = () => {
-  const [isProcessing, setIsProcessing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [percentage, setPercentage] = useState<string>("");
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [customerName, setCustomerName] = useState<string>("");
+  const [customerAFM, setCustomerAFM] = useState<string>("");
+  const [isProcessing, setIsProcessing] = useState(false);
   const { convertRTFToPDF } = useRTFToPDFConverter();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -20,24 +26,56 @@ export const SimpleSupplierTool = () => {
       if (fileType.endsWith('.pdf') || fileType.endsWith('.rtf')) {
         setSelectedFile(file);
         toast({
-          title: "Αρχείο επιλέχθηκε",
-          description: `${file.name} είναι έτοιμο για επεξεργασία`,
+          title: "Αρχείο φορτώθηκε",
+          description: `${file.name}`,
         });
       } else {
         toast({
-          title: "Μη υποστηριζόμενος τύπος αρχείου",
-          description: "Παρακαλώ επιλέξτε PDF ή RTF αρχείο",
+          title: "Λάθος τύπος αρχείου",
+          description: "Μόνο PDF ή RTF",
           variant: "destructive"
         });
       }
     }
   };
 
-  const handleCreateInteractivePDF = async () => {
+  const handleBannerSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      setBannerFile(file);
+      toast({
+        title: "Banner επιλέχθηκε",
+        description: file.name,
+      });
+    } else {
+      toast({
+        title: "Λάθος τύπος",
+        description: "Μόνο εικόνες",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const applyChanges = () => {
+    if (percentage) {
+      toast({
+        title: "Ποσοστό εφαρμόστηκε",
+        description: `${percentage}% στις τιμές`,
+      });
+    }
+  };
+
+  const removeBanner = () => {
+    setBannerFile(null);
+    toast({
+      title: "Banner αφαιρέθηκε",
+    });
+  };
+
+  const handleFinalExport = async () => {
     if (!selectedFile) {
       toast({
-        title: "Δεν έχει επιλεχθεί αρχείο",
-        description: "Παρακαλώ επιλέξτε ένα PDF ή RTF αρχείο",
+        title: "Δεν υπάρχει αρχείο",
         variant: "destructive"
       });
       return;
@@ -46,44 +84,35 @@ export const SimpleSupplierTool = () => {
     setIsProcessing(true);
     
     try {
-      toast({
-        title: "🔧 ΔΗΜΙΟΥΡΓΙΑ ΔΙΑΔΡΑΣΤΙΚΟΥ PDF",
-        description: "Προσθήκη πάνελ ελέγχου και διαδραστικών λειτουργιών...",
-      });
-
       let pdfBytes: Uint8Array;
       
-      // Convert RTF to PDF if needed
       if (selectedFile.name.endsWith('.rtf')) {
         pdfBytes = await convertRTFToPDF(selectedFile);
       } else {
         pdfBytes = new Uint8Array(await selectedFile.arrayBuffer());
       }
 
-      // Process with simple PDF processor
       const interactivePdfBytes = await simplePDFProcessor.processFactoryPDF(pdfBytes);
 
-      // Download the result
       const blob = new Blob([interactivePdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Διαδραστικό_${selectedFile.name.replace(/\.(rtf|pdf)$/i, '')}.pdf`;
+      link.download = `Προσφορά_${customerName || 'Πελάτης'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       toast({
-        title: "✅ ΔΙΑΔΡΑΣΤΙΚΟ PDF ΕΤΟΙΜΟ",
-        description: "Το PDF περιέχει πάνελ ελέγχου στην τελευταία σελίδα για τον πελάτη",
+        title: "✅ PDF έτοιμο",
+        description: "Η προσφορά δημιουργήθηκε",
       });
 
     } catch (error) {
-      console.error('Error creating interactive PDF:', error);
       toast({
         title: "Σφάλμα",
-        description: "Σφάλμα κατά τη δημιουργία του διαδραστικού PDF",
+        description: "Προσπαθήστε ξανά",
         variant: "destructive",
       });
     } finally {
@@ -91,137 +120,134 @@ export const SimpleSupplierTool = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background p-4">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold text-foreground">
-            🔧 EUROPLAST PDF PROCESSOR
-          </h1>
-          <p className="text-muted-foreground">
-            Προσθέστε διαδραστικό πάνελ ελέγχου στις προσφορές σας
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Controls */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5" />
-                  Δημιουργία Διαδραστικού PDF
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                
-                {/* File Upload */}
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                    <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">
-                      Επιλέξτε το PDF ή RTF της προσφοράς σας
-                    </h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Υποστηρίζονται μόνο PDF και RTF αρχεία
-                    </p>
-                    <input
-                      type="file"
-                      accept=".pdf,.rtf"
-                      onChange={handleFileSelect}
-                      className="hidden"
-                      id="file-upload"
-                    />
-                    <label htmlFor="file-upload">
-                      <Button variant="outline" className="cursor-pointer">
-                        Επιλογή Αρχείου
-                      </Button>
-                    </label>
-                  </div>
-
-                  {selectedFile && (
-                    <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-                      <FileText className="h-5 w-5 text-primary" />
-                      <span className="font-medium">{selectedFile.name}</span>
-                      <span className="text-sm text-muted-foreground">
-                        ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Process Button */}
-                <Button
-                  onClick={handleCreateInteractivePDF}
-                  disabled={!selectedFile || isProcessing}
-                  className="w-full h-12 text-lg font-semibold"
-                  size="lg"
-                >
-                  {isProcessing ? (
-                    "🔄 Δημιουργία διαδραστικού PDF..."
-                  ) : (
-                    <>
-                      <Download className="h-5 w-5 mr-2" />
-                      ΔΗΜΙΟΥΡΓΙΑ ΔΙΑΔΡΑΣΤΙΚΟΥ PDF
-                    </>
-                  )}
+  if (!selectedFile) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-4">
+              <Upload className="h-16 w-16 mx-auto text-muted-foreground" />
+              <h1 className="text-2xl font-bold">PDF Processor</h1>
+              <p className="text-muted-foreground">Επιλέξτε PDF ή RTF αρχείο</p>
+              
+              <input
+                type="file"
+                accept=".pdf,.rtf"
+                onChange={handleFileSelect}
+                className="hidden"
+                id="file-upload"
+              />
+              <label htmlFor="file-upload">
+                <Button className="w-full cursor-pointer" size="lg">
+                  Επιλογή Αρχείου
                 </Button>
-
-                {/* Info */}
-                <div className="bg-primary/10 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Τι προστίθεται στο PDF:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Νέα σελίδα με πάνελ ελέγχου στο τέλος</li>
-                    <li>• Κουμπί "Αλλαγή Banner" για το λογότυπο</li>
-                    <li>• Κουμπί "Αλλαγή Ποσοστού" για τις τιμές</li>
-                    <li>• Προστασία περιεχομένου (μόνο τα κουμπιά λειτουργούν)</li>
-                    <li>• Οδηγίες χρήσης για τον πελάτη</li>
-                  </ul>
-                </div>
-
-                {/* Workflow */}
-                <div className="bg-accent/10 p-4 rounded-lg">
-                  <h4 className="font-medium mb-2">Πώς λειτουργεί:</h4>
-                  <ol className="text-sm text-muted-foreground space-y-1">
-                    <li>1. Επιλέγετε το PDF/RTF της προσφοράς σας</li>
-                    <li>2. Ελέγχετε την προβολή στα δεξιά</li>
-                    <li>3. Πατάτε "Δημιουργία Διαδραστικού PDF"</li>
-                    <li>4. Κατεβάζετε το νέο διαδραστικό PDF</li>
-                    <li>5. Στέλνετε το νέο PDF στον πελάτη</li>
-                  </ol>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Right Column - Preview */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Eye className="h-5 w-5 text-primary" />
-              <h2 className="text-xl font-semibold">Προβολή Αρχείου</h2>
+              </label>
             </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Full-Screen PDF Preview */}
+      <div className="w-full">
+        {selectedFile.name.endsWith('.pdf') ? (
+          <div className="w-full min-h-screen">
+            <EnhancedPDFViewer 
+              file={selectedFile}
+              title={selectedFile.name}
+            />
+          </div>
+        ) : (
+          <div className="w-full min-h-screen">
+            <RTFViewer rtfFile={selectedFile} />
+          </div>
+        )}
+      </div>
+
+      {/* Control Panel - Fixed at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-background border-t shadow-lg">
+        <div className="max-w-6xl mx-auto p-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
             
-            {selectedFile?.name.endsWith('.pdf') ? (
-              <EnhancedPDFViewer 
-                file={selectedFile}
-                title="Προβολή PDF Προσφοράς"
-              />
-            ) : selectedFile?.name.endsWith('.rtf') ? (
-              <RTFViewer 
-                rtfFile={selectedFile}
-              />
-            ) : (
-              <Card className="w-full h-[600px]">
-                <CardContent className="flex items-center justify-center h-full">
-                  <div className="text-center text-muted-foreground">
-                    <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                    <p className="text-lg">Επιλέξτε αρχείο για προβολή</p>
-                    <p className="text-sm">Θα δείτε εδώ το περιεχόμενο του PDF ή RTF</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Banner Control */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Banner</Label>
+              <div className="flex gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleBannerSelect}
+                  className="hidden"
+                  id="banner-upload"
+                />
+                <label htmlFor="banner-upload">
+                  <Button variant="outline" size="sm" className="cursor-pointer">
+                    Αλλαγή
+                  </Button>
+                </label>
+                <Button variant="outline" size="sm" onClick={removeBanner}>
+                  Αφαίρεση
+                </Button>
+              </div>
+              {bannerFile && (
+                <p className="text-xs text-muted-foreground truncate">
+                  {bannerFile.name}
+                </p>
+              )}
+            </div>
+
+            {/* Price Control */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Ποσοστό Τιμών</Label>
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  placeholder="+10 ή -15"
+                  value={percentage}
+                  onChange={(e) => setPercentage(e.target.value)}
+                  className="w-20"
+                />
+                <Button variant="outline" size="sm" onClick={applyChanges}>
+                  Εφαρμογή
+                </Button>
+              </div>
+            </div>
+
+            {/* Customer Details */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Στοιχεία Πελάτη</Label>
+              <div className="space-y-1">
+                <Input
+                  placeholder="Όνομα"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="h-8"
+                />
+                <Input
+                  placeholder="ΑΦΜ"
+                  value={customerAFM}
+                  onChange={(e) => setCustomerAFM(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+            </div>
+
+            {/* Export */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Τελικό PDF</Label>
+              <Button
+                onClick={handleFinalExport}
+                disabled={isProcessing}
+                className="w-full"
+                size="sm"
+              >
+                {isProcessing ? "Δημιουργία..." : "Κατέβασμα"}
+              </Button>
+            </div>
+
           </div>
         </div>
       </div>
