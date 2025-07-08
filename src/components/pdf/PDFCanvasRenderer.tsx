@@ -28,7 +28,7 @@ export const PDFCanvasRenderer = ({
   });
 
   return (
-    <div className="relative w-full max-w-4xl">
+    <div className="w-full flex justify-center">
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-10">
           <div className="text-center space-y-2">
@@ -38,12 +38,12 @@ export const PDFCanvasRenderer = ({
         </div>
       )}
       
-      {/* Rendered PDF Pages Container */}
+      {/* Rendered PDF Pages Container - A4 Format */}
       {pdfDoc && (
         <div 
           ref={containerRef}
-          className="w-full"
-          style={{ minHeight: '842px' }} // A4 height minimum
+          className="w-full space-y-4"
+          style={{ maxWidth: '210mm' }}
         />
       )}
     </div>

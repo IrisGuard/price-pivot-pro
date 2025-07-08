@@ -50,24 +50,9 @@ export const HybridPDFViewer = ({
   const useNativeFallback = forceNativeFallback || (!pdfDoc && pdfUrl && !loading);
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 flex flex-col">
-      {/* Header */}
-      <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
-        <h1 className="text-lg font-semibold text-gray-900">
-          {useNativeFallback ? 'PDF Προβολή (Browser)' : 'PDF Επεξεργαστής'}
-        </h1>
-        {(pdfDoc || pdfUrl) && (
-          <PDFZoomControls
-            scale={scale}
-            onZoomIn={zoomIn}
-            onZoomOut={zoomOut}
-            pageCount={pdfDoc?.numPages}
-          />
-        )}
-      </div>
-
+    <div className="w-full min-h-screen bg-white">
       {error && !useNativeFallback && (
-        <Alert className="mx-4 mt-2">
+        <Alert className="mx-auto mt-4 max-w-4xl">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Σφάλμα φόρτωσης PDF. Χρήση εναλλακτικής προβολής...
@@ -75,46 +60,42 @@ export const HybridPDFViewer = ({
         </Alert>
       )}
 
-      {/* Main Content - Full Width */}
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
-        <div className="flex-1 overflow-auto">
-          <div className="flex justify-center py-6">
-            <div className="w-full max-w-4xl">
-              {/* Enhanced Loading State */}
-              {loading && (
-                <div className="flex items-center justify-center min-h-[400px]">
-                  <div className="text-center space-y-4">
-                    <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
-                    <div className="space-y-2">
-                      <p className="text-lg font-medium text-foreground">Φόρτωση αρχείου...</p>
-                      <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
-                    </div>
-                  </div>
+      {/* Main Content - Clean A4 Layout */}
+      <div className="flex flex-col items-center py-6">
+        <div className="w-full" style={{ maxWidth: '210mm' }}>
+          {/* Enhanced Loading State */}
+          {loading && (
+            <div className="flex items-center justify-center min-h-[400px]">
+              <div className="text-center space-y-4">
+                <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
+                <div className="space-y-2">
+                  <p className="text-lg font-medium text-foreground">Φόρτωση αρχείου...</p>
+                  <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
                 </div>
-              )}
-              
-              {/* PDF.js Renderer */}
-              {!useNativeFallback && pdfDoc && !loading && (
-                <PDFCanvasRenderer
-                  pdfDoc={pdfDoc}
-                  scale={scale}
-                  loading={false}
-                  onTextExtracted={onTextExtracted}
-                  onPricesDetected={onPricesDetected}
-                  onRenderComplete={(success) => {
-                    if (!success && pdfUrl) {
-                      setForceNativeFallback(true);
-                    }
-                  }}
-                />
-              )}
-              
-              {/* Browser Native Fallback */}
-              {useNativeFallback && pdfUrl && !loading && (
-                <PDFBrowserFallback pdfUrl={pdfUrl} />
-              )}
+              </div>
             </div>
-          </div>
+          )}
+          
+          {/* PDF.js Renderer */}
+          {!useNativeFallback && pdfDoc && !loading && (
+            <PDFCanvasRenderer
+              pdfDoc={pdfDoc}
+              scale={scale}
+              loading={false}
+              onTextExtracted={onTextExtracted}
+              onPricesDetected={onPricesDetected}
+              onRenderComplete={(success) => {
+                if (!success && pdfUrl) {
+                  setForceNativeFallback(true);
+                }
+              }}
+            />
+          )}
+          
+          {/* Browser Native Fallback */}
+          {useNativeFallback && pdfUrl && !loading && (
+            <PDFBrowserFallback pdfUrl={pdfUrl} />
+          )}
         </div>
       </div>
     </div>

@@ -22,7 +22,7 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
   return (
     <div className="w-full">
       {/* Universal File Processor */}
-      <div className="w-full min-h-screen">
+      <div className="w-full">
         <ProfessionalDocumentViewer 
           file={file}
           onPricesDetected={onPricesDetected}
@@ -32,35 +32,33 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
         />
       </div>
 
-      {/* Control Panel - Professional A4 Format */}
-      <div className="w-full bg-gray-50 border-t print-hide">
-        <div className="py-6">
-          <div className="mx-auto" style={{ width: '210mm' }}>
-            <div 
-              className="bg-white shadow-xl border border-gray-300"
-              style={{ 
-                width: '210mm',
-                padding: '15mm'
+      {/* Control Panel - A4 Format */}
+      <div className="w-full bg-white">
+        <div className="flex justify-center py-6">
+          <div 
+            className="bg-white shadow-xl border border-gray-300"
+            style={{ 
+              width: '210mm',
+              padding: '15mm'
+            }}
+          >
+            <ProfessionalControlPanel 
+              pageWidth={595} // A4 width in points
+              onPercentageChange={(percentage) => {
+                console.log('Percentage change:', percentage);
               }}
-            >
-              <ProfessionalControlPanel 
-                pageWidth={595} // A4 width in points
-                onPercentageChange={(percentage) => {
-                  console.log('Percentage change:', percentage);
-                }}
-                onBannerChange={(file) => {
-                  console.log('Banner change:', file);
-                }}
-                onCustomerDataChange={(data) => {
-                  console.log('Customer data change:', data);
-                }}
-                onExportCleanPDF={async () => {
-                  console.log('Export clean PDF requested');
-                  // Enhanced export with A4 format preservation
-                  window.print();
-                }}
-              />
-            </div>
+              onBannerChange={(file) => {
+                console.log('Banner change:', file);
+              }}
+              onCustomerDataChange={(data) => {
+                console.log('Customer data change:', data);
+              }}
+              onExportCleanPDF={async () => {
+                console.log('Export clean PDF requested');
+                // Enhanced export with A4 format preservation
+                window.print();
+              }}
+            />
           </div>
         </div>
       </div>
