@@ -3,7 +3,6 @@ import { AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePDFLoader } from '@/hooks/usePDFLoader';
-import { usePDFNavigation } from '@/hooks/usePDFNavigation';
 import { useSmartPriceDetection } from '@/hooks/useSmartPriceDetection';
 import { useBannerReplacement } from '@/hooks/useBannerReplacement';
 import { useCustomerDataIntegration } from '@/hooks/useCustomerDataIntegration';
@@ -26,7 +25,6 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   
   
   const { pdfDoc, loading, error, pdfUrl } = usePDFLoader(pdfFile);
-  const navigation = usePDFNavigation(pdfDoc?.numPages || 0);
   
   // ΦΑΣΗ 2: Smart Features
   const priceDetection = useSmartPriceDetection();
@@ -45,15 +43,6 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
     setPagesRendered(success);
   }, []);
 
-  // Enhanced page navigation with scrolling
-  const handlePageSelect = useCallback((pageIndex: number) => {
-    navigation.goToPage(pageIndex);
-    // Scroll to the specific page
-    const pageElement = document.getElementById(`pdf-page-${pageIndex + 1}`);
-    if (pageElement) {
-      pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  }, [navigation]);
 
   // Stable callbacks to prevent infinite re-renders
   const stableOnTextExtracted = useCallback((text: string) => {
@@ -83,10 +72,10 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 flex flex-col">
-      {/* Fixed Header */}
-      <div className="bg-white border-b px-4 py-2 flex items-center justify-between pdf-header print-hide">
-        <h1 className="text-lg font-semibold text-gray-900">PDF Επεξεργαστής</h1>
+    <div className="w-full min-h-screen bg-background flex flex-col">
+      {/* Simplified Header */}
+      <div className="bg-card border-b px-4 py-3 flex items-center justify-between pdf-header print-hide">
+        <h1 className="text-lg font-semibold text-foreground">PDF Επεξεργαστής</h1>
         {pdfDoc && (
           <PDFZoomControls
             scale={scale}
@@ -98,87 +87,82 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
       </div>
 
       {error && (
-        <Alert className="mx-4 mt-2">
+        <Alert className="mx-auto mt-4 max-w-4xl">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      {/* Main PDF Content - Full Width */}
-      <div className="flex-1 flex flex-col bg-white overflow-hidden">
-          <div className="flex-1 overflow-auto">
-            <div className="flex justify-center py-6">
-              <div className="w-full max-w-4xl">
-                {/* Canvas Renderer */}
-                {pdfDoc && (
-                  <PDFCanvasRenderer
-                    pdfDoc={pdfDoc}
-                    scale={scale}
-                    loading={loading}
-                    onTextExtracted={stableOnTextExtracted}
-                    onPricesDetected={stableOnPricesDetected}
-                    onRenderComplete={handleRenderComplete}
-                  />
-                )}
-                
-                {/* Browser Fallback */}
-                {(!pdfDoc && pdfUrl && !loading) && (
-                  <PDFBrowserFallback pdfUrl={pdfUrl} />
-                )}
-            </div>
+      {/* Main Content - Continuous Vertical Scroll */}
+      <div className="flex-1 overflow-auto bg-muted/20">
+        <div className="flex flex-col items-center py-6 space-y-6">
+          {/* PDF Content */}
+          <div className="w-full max-w-4xl">
+            {pdfDoc && (
+              <PDFCanvasRenderer
+                pdfDoc={pdfDoc}
+                scale={scale}
+                loading={loading}
+                onTextExtracted={stableOnTextExtracted}
+                onPricesDetected={stableOnPricesDetected}
+                onRenderComplete={handleRenderComplete}
+              />
+            )}
+            
+            {(!pdfDoc && pdfUrl && !loading) && (
+              <PDFBrowserFallback pdfUrl={pdfUrl} />
+            )}
           </div>
+
+          {/* Control Panel - Aligned with PDF */}
+          {(pdfDoc || pdfUrl) && (
+            <div className="w-full max-w-4xl">
+              <ProfessionalControlPanel
+                pageWidth={595} // A4 width
+                pdfFile={pdfFile}
+                onPercentageChange={(percentage) => {
+                  priceDetection.applyPercentageToAllPrices(percentage);
+                }}
+                onBannerChange={(file) => {
+                  bannerReplacement.loadBannerFile(file);
+                }}
+                onCustomerDataChange={(data) => {
+                  Object.entries(data).forEach(([key, value]) => {
+                    customerDataIntegration.updateCustomerData(key as any, value);
+                  });
+                }}
+                onExportCleanPDF={async () => {
+                  if (!pdfFile) return;
+                  
+                  try {
+                    // Δημιουργία καθαρού PDF με όλες τις αλλαγές
+                    let pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
+                    
+                    // Εφαρμογή banner
+                    pdfBytes = await bannerReplacement.applyBannerToPDF(pdfBytes);
+                    
+                    // Εφαρμογή στοιχείων πελάτη
+                    pdfBytes = await customerDataIntegration.applyCustomerDataToPDF(pdfBytes);
+                    
+                    // Download
+                    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'Προσφορά_Καθαρή.pdf';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                  } catch (error) {
+                    console.error('Σφάλμα κατά την εξαγωγή:', error);
+                  }
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Professional Control Panel - Always visible when PDF is loaded */}
-      {(pdfDoc || pdfUrl) && (
-        <div className="w-full bg-gray-50 border-t mt-auto">
-          <div className="container mx-auto max-w-4xl py-8">
-            <ProfessionalControlPanel 
-              pageWidth={595} // A4 width
-              pdfFile={pdfFile}
-              onPercentageChange={(percentage) => {
-                priceDetection.applyPercentageToAllPrices(percentage);
-              }}
-              onBannerChange={(file) => {
-                bannerReplacement.loadBannerFile(file);
-              }}
-              onCustomerDataChange={(data) => {
-                Object.entries(data).forEach(([key, value]) => {
-                  customerDataIntegration.updateCustomerData(key as any, value);
-                });
-              }}
-              onExportCleanPDF={async () => {
-                if (!pdfFile) return;
-                
-                try {
-                  // Δημιουργία καθαρού PDF με όλες τις αλλαγές
-                  let pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
-                  
-                  // Εφαρμογή banner
-                  pdfBytes = await bannerReplacement.applyBannerToPDF(pdfBytes);
-                  
-                  // Εφαρμογή στοιχείων πελάτη
-                  pdfBytes = await customerDataIntegration.applyCustomerDataToPDF(pdfBytes);
-                  
-                  // Download
-                  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
-                  const url = URL.createObjectURL(blob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = 'Προσφορά_Καθαρή.pdf';
-                  document.body.appendChild(link);
-                  link.click();
-                  document.body.removeChild(link);
-                  URL.revokeObjectURL(url);
-                } catch (error) {
-                  console.error('Σφάλμα κατά την εξαγωγή:', error);
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
 
       {/* ΦΑΣΗ 2: Price Detection Overlay */}
       {pdfDoc && priceDetection.detectedPrices.length > 0 && (

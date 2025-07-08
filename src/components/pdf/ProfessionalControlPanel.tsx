@@ -137,10 +137,10 @@ export const ProfessionalControlPanel = ({
   return (
     <>
       <Card 
-        className={`shadow-lg print:shadow-none pdf-control-panel print-hide ${
-          isAdminMode ? 'bg-blue-50 border-blue-200' : 'bg-white'
+        className={`shadow-lg print:shadow-none pdf-control-panel print-hide w-full ${
+          isAdminMode ? 'bg-blue-50 border-blue-200' : 'bg-card'
         }`}
-        style={{ width: pageWidth + 'px', maxWidth: '100%' }}
+        style={{ maxWidth: pageWidth + 'px' }}
       >
         <div className="p-8 space-y-8">
           {/* Header with Mode Toggle */}
