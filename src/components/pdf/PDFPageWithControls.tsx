@@ -5,6 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
+import { toast } from '@/hooks/use-toast';
 
 interface PDFPageWithControlsProps {
   pageWidth?: number;
@@ -38,16 +39,42 @@ export const PDFPageWithControls = ({
 
   const handlePercentageApply = () => {
     const value = parseFloat(percentage);
-    if (!isNaN(value) && onPercentageChange) {
+    if (isNaN(value)) {
+      toast({
+        title: "Σφάλμα",
+        description: "Παρακαλώ εισάγετε έγκυρο ποσοστό",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (onPercentageChange) {
       onPercentageChange(value);
+      toast({
+        title: "Επιτυχία",
+        description: `Ποσοστό ${value}% εφαρμόστηκε στις τιμές`,
+      });
     }
   };
 
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && onBannerChange) {
-      onBannerChange(file);
+    if (file) {
+      if (onBannerChange) {
+        onBannerChange(file);
+      }
+      toast({
+        title: "Banner ενημερώθηκε",
+        description: `Νέο banner: ${file.name}`,
+      });
     }
+  };
+
+  const handleRemoveBanner = () => {
+    toast({
+      title: "Banner αφαιρέθηκε",
+      description: "Το banner αφαιρέθηκε από την προσφορά",
+    });
   };
 
   const handleCustomerDataUpdate = (field: keyof CustomerData, value: string) => {
@@ -133,7 +160,7 @@ export const PDFPageWithControls = ({
                   ΑΛΛΑΓΗ BANNER
                 </label>
               </Button>
-              <Button variant="destructive">
+              <Button variant="destructive" onClick={handleRemoveBanner}>
                 ΑΦΑΙΡΕΣΗ BANNER
               </Button>
             </div>
