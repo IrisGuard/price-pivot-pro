@@ -7,7 +7,7 @@ export const PDFControlPage = ({ pageWidth = 595 }: PDFControlPageProps) => {
     const input = document.querySelector('#percentageInput') as HTMLInputElement;
     const percentage = parseFloat(input.value);
     if (!isNaN(percentage)) {
-      console.log('Applying percentage:', percentage);
+      
       // TODO: Implement price update logic
       alert(`Εφαρμογή ποσοστού: ${percentage}%`);
     }
@@ -21,14 +21,14 @@ export const PDFControlPage = ({ pageWidth = 595 }: PDFControlPageProps) => {
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      console.log('Banner file selected:', file.name);
+      
       // TODO: Implement banner replacement
       alert(`Νέο banner: ${file.name}`);
     }
   };
 
   const handleRemoveBanner = () => {
-    console.log('Removing banner');
+    
     // TODO: Implement banner removal
     alert('Αφαίρεση banner');
   };

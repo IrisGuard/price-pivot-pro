@@ -2,6 +2,7 @@ import { Upload } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useRef } from "react";
+import { useFileValidation } from "@/hooks/useFileValidation";
 
 interface FileUploadSectionProps {
   onFileChange: (file: File | null) => void;
@@ -9,14 +10,13 @@ interface FileUploadSectionProps {
 
 export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { validateFile, validationError } = useFileValidation();
 
   const handleFileSelect = (file: File) => {
-    // Validate file type
-    const validTypes = ['.pdf', '.rtf'];
-    const isValidType = validTypes.some(type => file.name.toLowerCase().endsWith(type));
+    const validation = validateFile(file);
     
-    if (!isValidType) {
-      alert('Παρακαλώ επιλέξτε αρχείο PDF ή RTF');
+    if (!validation.isValid) {
+      alert(`❌ ${validation.error}`);
       return;
     }
     

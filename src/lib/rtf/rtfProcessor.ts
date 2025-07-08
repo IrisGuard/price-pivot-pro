@@ -11,7 +11,6 @@ export interface RTFProcessingResult {
 export class RTFProcessor {
   async processRTFFile(file: File): Promise<RTFProcessingResult> {
     const startTime = Date.now();
-    console.log('🔄 Processing RTF file:', file.name);
     
     const arrayBuffer = await file.arrayBuffer();
     
@@ -32,14 +31,10 @@ export class RTFProcessor {
       }
     }
     
-    console.log(`📄 RTF decoded with ${encoding}, length:`, rtfData.length);
-    
-    // COMPREHENSIVE RTF PARSING
     const text = this.parseRTFToText(rtfData);
     const prices = this.extractPricesFromRTF(text);
     
     const processingTime = Date.now() - startTime;
-    console.log(`✅ RTF processed in ${processingTime}ms`);
     
     return {
       text,

@@ -3,7 +3,7 @@ import { PDFDocument, PDFImage, PageSizes, rgb } from 'pdf-lib';
 export class PDFBannerProcessor {
   async replaceBanner(pdfDoc: PDFDocument, bannerImageBytes: Uint8Array): Promise<void> {
     try {
-      console.log('🖼️ Replacing banner in PDF...');
+      
       
       const pages = pdfDoc.getPages();
       const firstPage = pages[0];
@@ -54,10 +54,10 @@ export class PDFBannerProcessor {
         x, y, width: drawWidth, height: drawHeight,
       });
       
-      console.log(`✅ Banner replaced: ${drawWidth}x${drawHeight} at (${x}, ${y})`);
+      
       
     } catch (error) {
-      console.error('❌ Error replacing banner:', error);
+      throw error;
     }
   }
 }

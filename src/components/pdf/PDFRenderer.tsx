@@ -66,7 +66,6 @@ export class PDFRenderer {
       await page.render(renderContext).promise;
       return canvas;
     } catch (error) {
-      console.error(`Error rendering page ${pageNumber}:`, error);
       return null;
     }
   }

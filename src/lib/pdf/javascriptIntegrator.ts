@@ -71,7 +71,7 @@ this.getField("applyPercentageBtn").setAction("MouseUp", "EUROPLAST.applyPercent
     // Embed JavaScript directly in PDF
     pdfDoc.addJavaScript('EuroplastController', jsCode);
     
-    console.log('✅ Interactive PDF created with functional buttons');
+    
   }
 
   private createBannerManagementScript(): string {

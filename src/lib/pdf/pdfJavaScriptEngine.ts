@@ -22,7 +22,7 @@ var EUROPLAST = {
     init: function() {
         if (this.initialized) return;
         
-        console.log("🔧 EUROPLAST PDF Engine Loading...");
+        
         this.extractOriginalPrices();
         this.setupEventHandlers();
         this.initialized = true;
@@ -47,7 +47,7 @@ var EUROPLAST = {
                 }
             }
         } catch (e) {
-            console.log("Price extraction error:", e);
+            
         }
     },
     
@@ -148,9 +148,9 @@ function showPriceSummary() {
       // For now, we store the JS in metadata for potential extraction
       pdfDoc.setKeywords([`JS_ENGINE:${btoa(jsCode)}`]);
       
-      console.log('JavaScript engine code prepared for PDF');
+      
     } catch (error) {
-      console.warn('JavaScript injection not fully supported:', error);
+      
     }
   }
 
@@ -160,11 +160,11 @@ function showPriceSummary() {
 (function() {
     'use strict';
     
-    console.log('🔧 EUROPLAST PDF Client Enhancement Loading...');
+    
     
     // Enhance PDF viewer if available
     if (window.PDFViewerApplication) {
-        console.log('PDF.js viewer detected - enhancing...');
+        
         
         // Add custom controls
         const toolbar = document.querySelector('#toolbarViewer');

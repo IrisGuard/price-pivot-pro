@@ -60,7 +60,7 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
   const parseRTF = useCallback(async (file: File) => {
     setLoading(true);
     try {
-      console.log('🔄 Parsing RTF file...');
+      
       const arrayBuffer = await file.arrayBuffer();
       
       // Try different encodings
@@ -75,7 +75,7 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
         }
       }
       
-      console.log('📄 RTF data length:', rtfData.length);
+      
       
       try {
         // Use the new RTF processor for better parsing
@@ -93,10 +93,10 @@ export const RTFViewer = ({ rtfFile, onTextExtracted, onPricesDetected }: RTFVie
           onPricesDetected(result.prices);
         }
         
-        console.log(`✅ RTF parsed: ${result.text.length} chars, ${result.prices.length} prices`);
+        
         
       } catch (processorError) {
-        console.warn('New RTF processor failed, using fallback:', processorError);
+        
         
         // FALLBACK: Enhanced RTF parsing
         let textContent = rtfData

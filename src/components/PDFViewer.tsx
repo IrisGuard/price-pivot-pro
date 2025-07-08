@@ -135,13 +135,13 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
           pageWidth={renderedPages[0]?.width || 595}
           isAdminMode={true}
           onPercentageChange={(percentage) => {
-            // TODO: Implement actual price modification
+            // Price modification will be implemented in Phase 3
           }}
           onBannerChange={(file) => {
-            // TODO: Implement banner replacement
+            // Banner replacement will be implemented in Phase 3
           }}
           onCustomerDataChange={(data) => {
-            // TODO: Store customer data
+            // Customer data storage will be implemented in Phase 3
           }}
           onExportCleanPDF={() => {
             window.print();

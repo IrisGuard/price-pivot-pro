@@ -8,7 +8,7 @@ export const useRTFToPDFConverter = () => {
       return new Uint8Array(await file.arrayBuffer());
     }
 
-    console.log('🔄 Converting RTF to PDF...');
+    
     
     // Enhanced RTF to PDF conversion
     const rtfContent = await file.text();
@@ -59,7 +59,7 @@ export const useRTFToPDFConverter = () => {
       currentY -= lineHeight;
     }
     
-    console.log('✅ RTF converted to PDF');
+    
     return await pdfDoc.save();
   }, []);
 
