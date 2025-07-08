@@ -171,6 +171,23 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         <PDFPageWithControls 
           pageWidth={renderedPages[0]?.width || 595}
           showControls={true}
+          isAdminMode={true}
+          onPercentageChange={(percentage) => {
+            console.log('🔢 Percentage change requested:', percentage);
+            // TODO: Integrate with PDF price processor
+          }}
+          onBannerChange={(file) => {
+            console.log('🖼️ Banner change requested:', file.name);
+            // TODO: Integrate with PDF banner processor
+          }}
+          onCustomerDataChange={(data) => {
+            console.log('👤 Customer data change:', data);
+            // TODO: Integrate with PDF customer data processor
+          }}
+          onExportCleanPDF={() => {
+            console.log('📄 Clean PDF export requested');
+            // TODO: Export PDF without control page
+          }}
         />
       )}
     </Card>

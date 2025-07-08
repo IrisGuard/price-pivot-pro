@@ -10,9 +10,11 @@ import { toast } from '@/hooks/use-toast';
 interface PDFPageWithControlsProps {
   pageWidth?: number;
   showControls?: boolean;
+  isAdminMode?: boolean;
   onPercentageChange?: (percentage: number) => void;
   onBannerChange?: (file: File) => void;
   onCustomerDataChange?: (data: CustomerData) => void;
+  onExportCleanPDF?: () => void;
 }
 
 interface CustomerData {
@@ -25,10 +27,13 @@ interface CustomerData {
 export const PDFPageWithControls = ({ 
   pageWidth = 595, 
   showControls = true,
+  isAdminMode = false,
   onPercentageChange,
   onBannerChange,
-  onCustomerDataChange
+  onCustomerDataChange,
+  onExportCleanPDF
 }: PDFPageWithControlsProps) => {
+  const [hideControlsForExport, setHideControlsForExport] = useState(false);
   const [percentage, setPercentage] = useState<string>('');
   const [customerData, setCustomerData] = useState<CustomerData>({
     name: '',
@@ -222,6 +227,45 @@ export const PDFPageWithControls = ({
 
         <Separator />
 
+        {/* Admin Controls */}
+        {isAdminMode && (
+          <Card className="border-blue-200 bg-blue-50">
+            <CardHeader>
+              <CardTitle className="text-blue-800 flex items-center gap-2">
+                <span className="text-xl">⚙️</span>
+                ΕΛΕΓΧΟΣ ADMIN
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="hide-controls-toggle" className="text-sm font-medium">
+                  Απόκρυψη σελίδας ελέγχου στην εξαγωγή PDF:
+                </Label>
+                <Switch
+                  id="hide-controls-toggle"
+                  checked={hideControlsForExport}
+                  onCheckedChange={setHideControlsForExport}
+                />
+              </div>
+              
+              {onExportCleanPDF && (
+                <Button 
+                  onClick={onExportCleanPDF}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  📄 ΕΞΑΓΩΓΗ ΚΑΘΑΡΟΥ PDF (χωρίς σελίδα ελέγχου)
+                </Button>
+              )}
+              
+              <p className="text-xs text-blue-600">
+                Χρησιμοποιήστε αυτές τις ρυθμίσεις για να ελέγξετε τι βλέπουν οι πελάτες
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Separator />
+
         {/* Instructions */}
         <Card className="border-amber-200 bg-amber-50">
           <CardHeader>
@@ -236,6 +280,9 @@ export const PDFPageWithControls = ({
               <li>• Για αλλαγή banner: Πατήστε "ΑΛΛΑΓΗ BANNER" και επιλέξτε εικόνα</li>
               <li>• Συμπληρώστε τα στοιχεία του πελάτη στα αντίστοιχα πεδία</li>
               <li>• Μετά τις αλλαγές, χρησιμοποιήστε Ctrl+P για εκτύπωση ή αποθήκευση</li>
+              {isAdminMode && (
+                <li className="text-blue-700 font-medium">• ADMIN: Χρησιμοποιήστε τα controls πάνω για διαχείριση της εξαγωγής</li>
+              )}
             </ul>
           </CardContent>
         </Card>

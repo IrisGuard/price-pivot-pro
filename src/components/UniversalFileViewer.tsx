@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { PDFViewer } from './PDFViewer';
-import { RTFViewer } from './RTFViewer';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
 
 interface PriceData {
