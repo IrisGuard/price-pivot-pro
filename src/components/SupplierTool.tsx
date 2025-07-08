@@ -37,6 +37,19 @@ const SupplierTool = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-primary to-primary-foreground py-8">
+        <div className="container mx-auto text-center">
+          <h1 className="text-4xl font-bold mb-4 text-white">
+            🔒 Δημιουργία Σφραγισμένου PDF Προσφοράς
+          </h1>
+          <p className="text-xl text-primary-foreground/80">
+            Δημιουργία προστατευμένου PDF με ενσωματωμένες λειτουργίες τιμολόγησης και παραμετροποίησης
+          </p>
+        </div>
+      </div>
+
+      {/* Main Content */}
       {!factoryFile ? (
         <FileUploadSection onFileChange={handleFactoryFileChange} />
       ) : (

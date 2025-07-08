@@ -8,6 +8,7 @@ import { usePriceExtraction } from '@/hooks/usePriceExtraction';
 import { usePDFRendering } from '@/hooks/usePDFRendering';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { PDFCanvasContainer } from '@/components/pdf/PDFCanvasContainer';
+import { PDFPageWithControls } from '@/components/pdf/PDFPageWithControls';
 
 // Initialize PDF.js worker
 const { setupPDFWorker } = usePDFWorkerSetup();
@@ -164,6 +165,14 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         pdfUrl={pdfUrl}
         pdfDoc={pdfDoc}
       />
+      
+      {/* Control Page at the end */}
+      {renderedPages.length > 0 && (
+        <PDFPageWithControls 
+          pageWidth={renderedPages[0]?.width || 595}
+          showControls={true}
+        />
+      )}
     </Card>
   );
 };
