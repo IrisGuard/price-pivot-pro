@@ -1,108 +1,95 @@
-import { Upload } from "lucide-react";
+import { useCallback } from 'react';
+import { useDropzone } from 'react-dropzone';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useRef } from "react";
-import { useFileValidation } from "@/hooks/useFileValidation";
+import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface FileUploadSectionProps {
   onFileChange: (file: File | null) => void;
 }
 
 export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const { validateFile, validationError } = useFileValidation();
-
-  const handleFileSelect = (file: File) => {
-    const validation = validateFile(file);
-    
-    if (!validation.isValid) {
-      // Enhanced error display with details
-      const errorMsg = [
-        `❌ ${validation.error}`,
-        validation.details ? `\nΛεπτομέρειες: ${validation.details.size}, ${validation.details.extension}` : ''
-      ].filter(Boolean).join('');
-      
-      alert(errorMsg);
-      return;
-    }
-    
-    // Success message with file type
-    const successMsg = `✅ Αρχείο ${validation.fileType?.toUpperCase()} φορτώθηκε επιτυχώς`;
-    console.log(successMsg, validation.details);
-    
-    onFileChange(file);
-  };
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files && files.length > 0) {
-      handleFileSelect(files[0]);
-    }
-    // Reset input value for re-selection
-    e.target.value = '';
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    
-    const files = e.dataTransfer.files;
+  const handleFileSelect = useCallback((files: File[]) => {
     if (files.length > 0) {
-      handleFileSelect(files[0]);
+      const file = files[0];
+      
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+        alert('Παρακαλώ επιλέξτε ένα PDF αρχείο');
+        return;
+      }
+      
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        alert('Το αρχείο είναι πολύ μεγάλο. Μέγιστο μέγεθος: 50MB');
+        return;
+      }
+      
+      onFileChange(file);
     }
-  };
+  }, [onFileChange]);
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop: handleFileSelect,
+    accept: {
+      'application/pdf': ['.pdf']
+    },
+    multiple: false,
+    maxSize: 50 * 1024 * 1024 // 50MB
+  });
 
   return (
-    <div className="flex items-center justify-center min-h-screen p-4">
-      <Card className="w-full max-w-md">
-        <CardContent className="pt-6">
-          <div 
-            className="text-center space-y-6 p-8 border-2 border-dashed rounded-lg transition-colors border-muted-foreground/25 hover:border-primary"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
+    <div className="container mx-auto px-4 py-12">
+      <div className="max-w-4xl mx-auto">
+        <Alert className="mb-8">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Υποστηριζόμενα αρχεία:</strong> PDF μόνο
+          </AlertDescription>
+        </Alert>
+
+        <Card className="p-12">
+          <div
+            {...getRootProps()}
+            className={`
+              border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors
+              ${isDragActive ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}
+            `}
           >
-            <Upload className="h-16 w-16 mx-auto text-muted-foreground" />
+            <input {...getInputProps()} />
             
-            <div>
-              <h1 className="text-2xl font-bold mb-2">🔒 PDF Processor</h1>
-              <p className="text-muted-foreground">
-                Επιλέξτε PDF, RTF, CSV ή Excel αρχείο για επεξεργασία
-              </p>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Hidden file input */}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept=".pdf,.rtf,.csv,.xlsx,.xls"
-                onChange={handleFileInputChange}
-                className="hidden"
-              />
+            <div className="space-y-6">
+              <div className="flex justify-center">
+                {isDragActive ? (
+                  <Upload className="h-20 w-20 text-primary animate-bounce" />
+                ) : (
+                  <FileText className="h-20 w-20 text-muted-foreground" />
+                )}
+              </div>
               
-              <Button 
-                onClick={handleButtonClick}
-                className="w-full" 
-                size="lg"
-                variant="default"
-              >
-                📁 Επιλογή Αρχείου
+              <div className="space-y-2">
+                <h3 className="text-2xl font-semibold">
+                  {isDragActive ? 'Αποθέστε το αρχείο εδώ' : 'Επιλέξτε αρχείο προσφοράς'}
+                </h3>
+                <p className="text-muted-foreground">
+                  Σύρετε και αποθέστε ένα PDF αρχείο ή κάντε κλικ για επιλογή
+                </p>
+              </div>
+              
+              <Button size="lg" variant="outline">
+                <Upload className="h-5 w-5 mr-2" />
+                Επιλογή αρχείου
               </Button>
               
-              <p className="text-xs text-muted-foreground">
-                ή σύρετε το αρχείο εδώ
-              </p>
+              <div className="text-sm text-muted-foreground">
+                <p>Μέγιστο μέγεθος: 50MB</p>
+                <p>Υποστηριζόμενοι τύποι: PDF</p>
+              </div>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+      </div>
     </div>
   );
 };

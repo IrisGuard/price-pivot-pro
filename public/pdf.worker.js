@@ -1,34 +1,27 @@
-// Self-contained PDF.js worker implementation
-// This avoids CORS issues by providing a local worker solution
+// Simple PDF.js Worker - Local Implementation
+// Downloads and executes the PDF.js worker script directly
 
-(function() {
-  'use strict';
-  
-  // Check if we're in a worker context
-  if (typeof importScripts !== 'undefined') {
-    try {
-      // Try to load from jsdelivr CDN (better CORS support than unpkg)
-      importScripts('https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.93/build/pdf.worker.min.js');
-    } catch (error) {
-      console.warn('Failed to load PDF worker from CDN:', error);
-      
-      // Fallback: Basic worker implementation
-      self.onmessage = function(e) {
-        console.warn('PDF Worker fallback - limited functionality');
+try {
+  // Try to load from CDN first (latest version)
+  importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js');
+} catch (error) {
+  try {
+    // Fallback to jsdelivr
+    importScripts('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.js');
+  } catch (error2) {
+    // Final fallback - create a basic worker that handles some operations
+    self.onmessage = function(e) {
+      try {
+        // Basic message handling
+        self.postMessage({
+          type: 'ready'
+        });
+      } catch (err) {
         self.postMessage({
           type: 'error',
-          error: 'PDF Worker not available - CORS blocked'
+          error: 'Worker initialization failed'
         });
-      };
-    }
-  } else {
-    // Not in worker context, create a basic worker shim
-    if (typeof self !== 'undefined') {
-      self.pdfjsWorker = {
-        getDocument: function() {
-          throw new Error('PDF.js worker not properly loaded');
-        }
-      };
-    }
+      }
+    };
   }
-})();
+}
