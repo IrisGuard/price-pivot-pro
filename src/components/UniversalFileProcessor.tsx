@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { HybridPDFViewer } from './pdf/HybridPDFViewer';
+import { OptimizedFileLoader } from './shared/OptimizedFileLoader';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
 import { CSVProcessor } from '@/lib/csv/csvProcessor';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
-import { AlertTriangle, FileText, Mail, Users, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle, FileText, Mail, Users, FileSpreadsheet, Loader2, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface PriceData {
@@ -45,6 +47,8 @@ export const UniversalFileProcessor = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [stage, setStage] = useState('');
+  const [useOptimizedMode, setUseOptimizedMode] = useState(false);
+  const [showOptimizedLoader, setShowOptimizedLoader] = useState(false);
   const { convertRTFToPDF } = useRTFToPDFConverter();
   const { toast } = useToast();
 
@@ -56,6 +60,48 @@ export const UniversalFileProcessor = ({
 
     processFile();
   }, [file]);
+
+  // Determine if file should use optimized processing
+  const shouldUseOptimizedProcessing = (file: File) => {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+    const isLargeFile = file.size > 2 * 1024 * 1024; // 2MB+
+    const isLargeCSV = (fileExtension === 'csv' || file.type === 'text/csv') && file.size > 1024 * 1024; // 1MB+ CSV
+    
+    return useOptimizedMode || isRTF || isLargeFile || isLargeCSV;
+  };
+
+  // Optimized file processor for large/complex files
+  const processFileOptimized = async (file: File, signal?: AbortSignal): Promise<ProcessingResult> => {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
+    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+    const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
+    const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
+
+    if (signal?.aborted) throw new Error('Processing cancelled');
+
+    if (isPDF) {
+      return { type: 'pdf', content: file };
+    } else if (isRTF) {
+      const pdfBytes = await convertRTFToPDF(file);
+      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
+        type: 'application/pdf'
+      });
+      return { type: 'rtf', content: pdfFile };
+    } else if (isCSV || isExcel) {
+      const csvProcessor = new CSVProcessor();
+      const result = await csvProcessor.processCSVFile(file);
+      return { 
+        type: isCSV ? 'csv' : 'excel', 
+        contacts: result.contacts,
+        emails: result.emails
+      };
+    }
+    
+    throw new Error('Μη υποστηριζόμενος τύπος αρχείου');
+  };
 
   const processFile = async () => {
     if (!file) return;
@@ -77,6 +123,12 @@ export const UniversalFileProcessor = ({
       return;
     }
 
+    // Check if should use optimized processing
+    if (shouldUseOptimizedProcessing(file)) {
+      setShowOptimizedLoader(true);
+      return;
+    }
+
     setIsProcessing(true);
     setProcessingResult(null);
     setProgress(0);
@@ -93,9 +145,9 @@ export const UniversalFileProcessor = ({
         setStage('Μετατροπή RTF σε PDF...');
         setProgress(25);
         
-        // RTF processing with 10s timeout
+        // RTF processing with 12s timeout (no racing with converter)
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('RTF timeout - χρήση fallback')), 10000);
+          setTimeout(() => reject(new Error('RTF timeout - χρήση fallback')), 12000);
         });
         
         const pdfBytes = await Promise.race([
@@ -121,7 +173,7 @@ export const UniversalFileProcessor = ({
         setStage('Επεξεργασία δεδομένων...');
         setProgress(25);
         
-        // CSV/Excel processing with 15s timeout
+        // CSV/Excel processing with 15s timeout  
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('CSV/Excel timeout')), 15000);
         });
@@ -166,6 +218,31 @@ export const UniversalFileProcessor = ({
       setIsProcessing(false);
       setProgress(0);
     }
+  };
+
+  const handleOptimizedFileComplete = (result: ProcessingResult) => {
+    setProcessingResult(result);
+    setShowOptimizedLoader(false);
+    
+    if (result.contacts && onContactsDetected) onContactsDetected(result.contacts);
+    if (result.emails && onEmailsDetected) onEmailsDetected(result.emails);
+    
+    const resultType = result.type === 'csv' ? 'CSV' : result.type === 'excel' ? 'Excel' : 'RTF';
+    if (result.type !== 'pdf') {
+      toast({
+        title: `✅ ${resultType} επεξεργασία`,
+        description: result.contacts ? 
+          `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails?.length || 0} emails` :
+          `Το ${resultType} μετατράπηκε επιτυχώς σε PDF`,
+      });
+    }
+  };
+
+  const handleOptimizedFileCancel = () => {
+    setShowOptimizedLoader(false);
+    setUseOptimizedMode(false);
+    // Fallback to fast processing
+    processFile();
   };
 
 
@@ -213,6 +290,18 @@ export const UniversalFileProcessor = ({
     );
   }
 
+  if (showOptimizedLoader) {
+    return (
+      <OptimizedFileLoader
+        file={file}
+        processor={processFileOptimized}
+        onComplete={handleOptimizedFileComplete}
+        onCancel={handleOptimizedFileCancel}
+        className="w-full min-h-[600px]"
+      />
+    );
+  }
+
   if (processingResult?.error) {
     return (
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
@@ -222,24 +311,37 @@ export const UniversalFileProcessor = ({
             <h3 className="text-lg font-semibold">Σφάλμα επεξεργασίας</h3>
             <p className="text-muted-foreground max-w-md">{processingResult.error}</p>
             <div className="space-y-2">
-              <button 
+              <Button 
                 onClick={() => {
                   setProcessingResult(null);
                   processFile();
                 }}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                className="mr-2"
               >
-                🔄 Δοκιμή ξανά
-              </button>
-              <button 
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Δοκιμή ξανά
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setProcessingResult(null);
+                  setUseOptimizedMode(true);
+                  processFile();
+                }}
+                className="mr-2"
+              >
+                <Loader2 className="h-4 w-4 mr-2" />
+                Βελτιστοποιημένη φόρτωση
+              </Button>
+              <Button 
+                variant="ghost"
                 onClick={() => {
                   setProcessingResult(null);
                   window.location.reload();
                 }}
-                className="px-4 py-2 bg-muted text-muted-foreground rounded-md hover:bg-muted/80 ml-2"
               >
                 📁 Διαφορετικό αρχείο
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { fileCache } from '@/lib/cache/fileCache';
-import { getPerformanceConfig } from '@/lib/config/environment';
+import { getPerformanceConfig, ENV_CONFIG } from '@/lib/config/environment';
 
 interface LoadingProgress {
   loaded: number;
@@ -47,16 +47,22 @@ export const useOptimizedFileLoader = () => {
     setProgress(null);
 
     try {
-      // Check cache first
+      // Check cache first (with safe mode fallback)
       const cacheKey = `optimized-${file.name}-${file.size}-${file.lastModified}`;
-      if (enableCache && config.cacheEnabled) {
-        const cached = fileCache.get(file, cacheKey);
-        if (cached) {
-          updateProgress(100, 100, 'complete');
-          onProgress?.({ loaded: 100, total: 100, percentage: 100, stage: 'complete' });
-          onComplete?.(cached);
-          setIsLoading(false);
-          return cached;
+      const useSafeMode = !config.cacheEnabled || !ENV_CONFIG.IS_PRODUCTION;
+      
+      if (enableCache && !useSafeMode) {
+        try {
+          const cached = fileCache.get(file, cacheKey);
+          if (cached) {
+            updateProgress(100, 100, 'complete');
+            onProgress?.({ loaded: 100, total: 100, percentage: 100, stage: 'complete' });
+            onComplete?.(cached);
+            setIsLoading(false);
+            return cached;
+          }
+        } catch (error) {
+          console.warn('Cache access failed, continuing with direct processing:', error);
         }
       }
 
@@ -97,9 +103,13 @@ export const useOptimizedFileLoader = () => {
       updateProgress(100, 100, 'complete');
       onProgress?.({ loaded: 100, total: 100, percentage: 100, stage: 'complete' });
 
-      // Cache result
-      if (enableCache && config.cacheEnabled) {
-        fileCache.set(file, cacheKey, result);
+      // Cache result (with safe mode check)
+      if (enableCache && !useSafeMode) {
+        try {
+          fileCache.set(file, cacheKey, result);
+        } catch (error) {
+          console.warn('Cache save failed, but processing completed successfully:', error);
+        }
       }
 
       onComplete?.(result);

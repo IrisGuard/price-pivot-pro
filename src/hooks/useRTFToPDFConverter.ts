@@ -7,14 +7,13 @@ export const useRTFToPDFConverter = () => {
       return new Uint8Array(await file.arrayBuffer());
     }
 
-    // 10-second timeout for RTF processing
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RTF processing timeout')), 10000);
-    });
+    // No internal timeout - let parent handle timing
+    // const timeoutPromise = new Promise<never>((_, reject) => {
+    //   setTimeout(() => reject(new Error('RTF processing timeout')), 10000);
+    // });
 
     try {
-      const result = await Promise.race([
-        (async () => {
+      const result = await (async () => {
           const rtfContent = await file.text();
           const pdfDoc = await PDFDocument.create();
           const page = pdfDoc.addPage([595, 842]);
@@ -55,9 +54,7 @@ export const useRTFToPDFConverter = () => {
           }
           
           return await pdfDoc.save();
-        })(),
-        timeoutPromise
-      ]);
+        })();
 
       return result;
     } catch (error) {

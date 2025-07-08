@@ -61,16 +61,17 @@ export const SpreadsheetViewer = ({ file, onProcessed }: SpreadsheetViewerProps)
   const getRawSpreadsheetData = async (file: File): Promise<any[][]> => {
     if (file.name.toLowerCase().endsWith('.csv')) {
       return new Promise((resolve, reject) => {
-        const Papa = require('papaparse');
-        Papa.parse(file, {
-          complete: (results: any) => resolve(results.data),
-          error: (error: any) => reject(error),
-          skipEmptyLines: true,
-          encoding: 'UTF-8'
-        });
+        import('papaparse').then(Papa => {
+          Papa.default.parse(file, {
+            complete: (results: any) => resolve(results.data),
+            error: (error: any) => reject(error),
+            skipEmptyLines: true,
+            encoding: 'UTF-8'
+          });
+        }).catch(reject);
       });
     } else {
-      const XLSX = require('xlsx');
+      const XLSX = await import('xlsx');
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: 'array' });
       const firstSheetName = workbook.SheetNames[0];
