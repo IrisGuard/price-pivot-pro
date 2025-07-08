@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { ProfessionalDocumentViewer } from '@/components/ProfessionalDocumentViewer';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
+import { usePDFProcessor } from '@/hooks/usePDFProcessor';
 
 interface PriceData {
   value: number;
@@ -18,6 +19,51 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
   const [extractedText, setExtractedText] = useState<string>('');
   const [contacts, setContacts] = useState<any[]>([]);
   const [emails, setEmails] = useState<string[]>([]);
+  const [detectedPrices, setDetectedPrices] = useState<PriceData[]>([]);
+  const [currentPercentage, setCurrentPercentage] = useState<number>(0);
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [customerData, setCustomerData] = useState({
+    name: '',
+    profession: '',
+    taxId: '',
+    phone: ''
+  });
+
+  const { createInteractivePDF } = usePDFProcessor();
+
+  const handlePricesDetected = useCallback((prices: PriceData[]) => {
+    setDetectedPrices(prices);
+    onPricesDetected(prices);
+  }, [onPricesDetected]);
+
+  const handlePercentageChange = useCallback((percentage: number) => {
+    setCurrentPercentage(percentage);
+    // Real-time price updates would go here
+  }, []);
+
+  const handleBannerChange = useCallback((file: File) => {
+    setBannerFile(file);
+  }, []);
+
+  const handleCustomerDataChange = useCallback((data: any) => {
+    setCustomerData(data);
+  }, []);
+
+  const handleExportPDF = useCallback(async () => {
+    try {
+      await createInteractivePDF({
+        factoryFile: file,
+        percentage: currentPercentage,
+        detectedPrices,
+        currentPrices: detectedPrices.map(price => ({
+          ...price,
+          value: Math.round(price.value * (1 + currentPercentage / 100) * 100) / 100
+        }))
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+    }
+  }, [file, currentPercentage, detectedPrices, createInteractivePDF]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,7 +71,7 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
       <div className="w-full bg-background">
         <ProfessionalDocumentViewer 
           file={file}
-          onPricesDetected={onPricesDetected}
+          onPricesDetected={handlePricesDetected}
           onTextExtracted={setExtractedText}
           onContactsDetected={setContacts}
           onEmailsDetected={setEmails}
@@ -45,20 +91,12 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
             }}
           >
             <ProfessionalControlPanel 
-              pageWidth={595} // A4 width in points
-              onPercentageChange={(percentage) => {
-                console.log('Percentage change:', percentage);
-              }}
-              onBannerChange={(file) => {
-                console.log('Banner change:', file);
-              }}
-              onCustomerDataChange={(data) => {
-                console.log('Customer data change:', data);
-              }}
-              onExportCleanPDF={async () => {
-                console.log('Export clean PDF requested');
-                window.print();
-              }}
+              pageWidth={595} // A4 width in points  
+              pdfFile={file}
+              onPercentageChange={handlePercentageChange}
+              onBannerChange={handleBannerChange}
+              onCustomerDataChange={handleCustomerDataChange}
+              onExportCleanPDF={handleExportPDF}
             />
           </div>
         </div>
