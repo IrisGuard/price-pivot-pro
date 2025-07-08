@@ -1,14 +1,18 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePDFLoader } from '@/hooks/usePDFLoader';
 import { usePDFNavigation } from '@/hooks/usePDFNavigation';
+import { useSmartPriceDetection } from '@/hooks/useSmartPriceDetection';
+import { useBannerReplacement } from '@/hooks/useBannerReplacement';
+import { useCustomerDataIntegration } from '@/hooks/useCustomerDataIntegration';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { PDFCanvasRenderer } from '@/components/pdf/PDFCanvasRenderer';
 import { PDFBrowserFallback } from '@/components/pdf/PDFBrowserFallback';
 import { PDFSidebar } from '@/components/pdf/PDFSidebar';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
+import { PriceDetectionOverlay } from '@/components/pdf/PriceDetectionOverlay';
 
 interface ProfessionalPDFViewerProps {
   pdfFile: File | null;
@@ -23,6 +27,11 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   
   const { pdfDoc, loading, error, pdfUrl } = usePDFLoader(pdfFile);
   const navigation = usePDFNavigation(pdfDoc?.numPages || 0);
+  
+  // ΦΑΣΗ 2: Smart Features
+  const priceDetection = useSmartPriceDetection();
+  const bannerReplacement = useBannerReplacement();
+  const customerDataIntegration = useCustomerDataIntegration();
 
   const zoomIn = useCallback(() => {
     setScale(prev => prev + 0.2);
@@ -54,6 +63,13 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   const stableOnPricesDetected = useCallback((prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => {
     onPricesDetected?.(prices);
   }, []);
+
+  // Αυτόματη ανίχνευση τιμών όταν φορτώνεται το PDF
+  useEffect(() => {
+    if (pdfDoc && !priceDetection.isDetecting) {
+      priceDetection.detectPricesInPDF(pdfDoc);
+    }
+  }, [pdfDoc]);
 
   if (!pdfFile) {
     return (
@@ -128,20 +144,57 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
               pageWidth={595} // A4 width
               isAdminMode={true}
               onPercentageChange={(percentage) => {
-                // Phase 3 implementation
+                priceDetection.applyPercentageToAllPrices(percentage);
               }}
               onBannerChange={(file) => {
-                // Phase 3 implementation
+                bannerReplacement.loadBannerFile(file);
               }}
               onCustomerDataChange={(data) => {
-                // Phase 3 implementation
+                Object.entries(data).forEach(([key, value]) => {
+                  customerDataIntegration.updateCustomerData(key as any, value);
+                });
               }}
-              onExportCleanPDF={() => {
-                window.print();
+              onExportCleanPDF={async () => {
+                if (!pdfFile) return;
+                
+                try {
+                  // Δημιουργία καθαρού PDF με όλες τις αλλαγές
+                  let pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
+                  
+                  // Εφαρμογή banner
+                  pdfBytes = await bannerReplacement.applyBannerToPDF(pdfBytes);
+                  
+                  // Εφαρμογή στοιχείων πελάτη
+                  pdfBytes = await customerDataIntegration.applyCustomerDataToPDF(pdfBytes);
+                  
+                  // Download
+                  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = 'Προσφορά_Καθαρή.pdf';
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                } catch (error) {
+                  console.error('Σφάλμα κατά την εξαγωγή:', error);
+                }
               }}
             />
           </div>
         </div>
+      )}
+
+      {/* ΦΑΣΗ 2: Price Detection Overlay */}
+      {pdfDoc && priceDetection.detectedPrices.length > 0 && (
+        <PriceDetectionOverlay
+          detectedPrices={priceDetection.detectedPrices}
+          onPriceUpdate={priceDetection.updateSinglePrice}
+          onPercentageApply={priceDetection.applyPercentageToAllPrices}
+          onReset={priceDetection.resetPrices}
+          isDetecting={priceDetection.isDetecting}
+        />
       )}
     </div>
   );
