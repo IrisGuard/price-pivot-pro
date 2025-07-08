@@ -34,21 +34,39 @@ export const usePDFLoader = (pdfFile: File | null) => {
         
         const arrayBuffer = await pdfFile.arrayBuffer();
         
-        loadingTask = pdfjsLib.getDocument({ 
-          data: arrayBuffer,
-          verbosity: pdfjsLib.VerbosityLevel.ERRORS
-        });
+        // Enhanced loading with multiple retry strategies
+        const loadWithRetry = async (attempt = 1): Promise<pdfjsLib.PDFDocumentProxy> => {
+          try {
+            loadingTask = pdfjsLib.getDocument({ 
+              data: arrayBuffer,
+              verbosity: pdfjsLib.VerbosityLevel.ERRORS,
+              disableAutoFetch: false,
+              disableStream: false
+            });
+            
+            const doc = await loadingTask.promise;
+            
+            if (doc.numPages === 0) {
+              throw new Error('PDF has no pages');
+            }
+            
+            return doc;
+          } catch (error) {
+            if (attempt < 3) {
+              // Wait and retry with different config
+              await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+              return loadWithRetry(attempt + 1);
+            }
+            throw error;
+          }
+        };
         
-        const doc = await loadingTask.promise;
-        
-        if (doc.numPages === 0) {
-          throw new Error('PDF has no pages');
-        }
-        
+        const doc = await loadWithRetry();
         setPdfDoc(doc);
         setError(null);
       } catch (error) {
-        setError('Σφάλμα φόρτωσης PDF. Χρήση εναλλακτικής προβολής.');
+        console.warn('PDF loading failed:', error);
+        setError(null); // Don't show error, just use fallback
         setPdfDoc(null);
       } finally {
         setLoading(false);

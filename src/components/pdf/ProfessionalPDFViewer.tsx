@@ -83,54 +83,62 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   }
 
   return (
-    <div className="w-full min-h-screen bg-muted/20 flex flex-col">
-      {/* 3-Column Layout: Sidebar + PDF + Content */}
-      <div className="flex flex-1">
-        {/* Left Sidebar with Thumbnails */}
-        <PDFSidebar 
-          pdfDoc={pdfDoc}
-          currentPageIndex={navigation.currentPageIndex}
-          onPageSelect={handlePageSelect}
-          collapsed={sidebarCollapsed}
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col bg-white">
-          {/* Zoom Controls */}
+    <div className="w-full min-h-screen bg-gray-50 flex flex-col">
+      {/* Fixed Header */}
+      <div className="bg-white border-b px-4 py-2 flex items-center justify-between">
+        <h1 className="text-lg font-semibold text-gray-900">PDF Επεξεργαστής</h1>
+        {pdfDoc && (
           <PDFZoomControls
             scale={scale}
             onZoomIn={zoomIn}
             onZoomOut={zoomOut}
-            pageCount={pdfDoc?.numPages}
+            pageCount={pdfDoc.numPages}
           />
+        )}
+      </div>
 
-          {error && (
-            <Alert className="mx-4 mb-2">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+      {error && (
+        <Alert className="mx-4 mt-2">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-          {/* PDF Content Container - Full width centered */}
-          <div className="flex-1 bg-white overflow-auto">
-            <div className="flex justify-center py-8">
-              {/* Canvas Renderer */}
-              {pdfDoc && (
-                <PDFCanvasRenderer
-                  pdfDoc={pdfDoc}
-                  scale={scale}
-                  loading={loading}
-                  onTextExtracted={stableOnTextExtracted}
-                  onPricesDetected={stableOnPricesDetected}
-                  onRenderComplete={handleRenderComplete}
-                />
-              )}
-              
-              {/* Browser Fallback */}
-              {(!pdfDoc && pdfUrl && !loading) && (
-                <PDFBrowserFallback pdfUrl={pdfUrl} />
-              )}
+      {/* Main Layout: Sidebar + Content */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar with Thumbnails */}
+        {(pdfDoc || pdfUrl) && (
+          <PDFSidebar 
+            pdfDoc={pdfDoc}
+            currentPageIndex={navigation.currentPageIndex}
+            onPageSelect={handlePageSelect}
+            collapsed={sidebarCollapsed}
+            onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+          />
+        )}
+
+        {/* Main PDF Content */}
+        <div className="flex-1 flex flex-col bg-white overflow-hidden">
+          <div className="flex-1 overflow-auto">
+            <div className="flex justify-center py-6">
+              <div className="w-full max-w-4xl">
+                {/* Canvas Renderer */}
+                {pdfDoc && (
+                  <PDFCanvasRenderer
+                    pdfDoc={pdfDoc}
+                    scale={scale}
+                    loading={loading}
+                    onTextExtracted={stableOnTextExtracted}
+                    onPricesDetected={stableOnPricesDetected}
+                    onRenderComplete={handleRenderComplete}
+                  />
+                )}
+                
+                {/* Browser Fallback */}
+                {(!pdfDoc && pdfUrl && !loading) && (
+                  <PDFBrowserFallback pdfUrl={pdfUrl} />
+                )}
+              </div>
             </div>
           </div>
         </div>

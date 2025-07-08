@@ -30,14 +30,14 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
     onRenderComplete?.(success);
   }, []);
 
-  // Check if we need to re-render (avoid unnecessary renders)
+  // Stable re-render check with better comparison
   const shouldRender = useMemo(() => {
-    if (!pdfDoc) return false;
+    if (!pdfDoc || renderingRef.current) return false;
     
     const current = lastRenderedRef.current;
     return !current || 
            current.pdfDoc !== pdfDoc || 
-           Math.abs(current.scale - scale) > 0.01 || 
+           Math.abs(current.scale - scale) > 0.05 || // Increased threshold to prevent micro-updates
            current.numPages !== pdfDoc.numPages;
   }, [pdfDoc, scale]);
 
