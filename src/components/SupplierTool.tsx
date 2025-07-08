@@ -27,6 +27,7 @@ const SupplierTool = () => {
   const { createInteractivePDF } = usePDFProcessor();
 
   const handleFactoryFileChange = (file: File | null) => {
+    console.log('File selected:', file?.name);
     setFactoryFile(file);
     setShowEditor(false);
     setDetectedPrices([]);
@@ -133,13 +134,17 @@ const SupplierTool = () => {
                 <input
                   type="file"
                   accept=".pdf,.rtf"
-                  onChange={(e) => handleFactoryFileChange(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    console.log('Input change triggered:', file?.name);
+                    handleFactoryFileChange(file);
+                  }}
                   className="hidden"
                   id="file-upload"
                 />
                 <label htmlFor="file-upload">
-                  <Button className="w-full cursor-pointer" size="lg">
-                    Επιλογή Αρχείου
+                  <Button asChild className="w-full cursor-pointer" size="lg">
+                    <span>Επιλογή Αρχείου</span>
                   </Button>
                 </label>
               </div>

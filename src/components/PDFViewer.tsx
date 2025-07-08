@@ -5,37 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// COMPLETE PDF.js WORKER SETUP - MULTIPLE STRATEGIES
+// SIMPLIFIED PDF.js WORKER SETUP
 const setupPDFWorker = () => {
   console.log('🔧 Setting up PDF.js worker...');
-  
-  try {
-    // Strategy 1: Use local worker file
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
-    console.log('✅ Using local PDF worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-    return true;
-  } catch (error) {
-    console.warn('❌ Local worker failed, trying CDN fallback');
-    
-    try {
-      // Strategy 2: Use versioned CDN
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-      console.log('⚠️ Using CDN worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-      return true;
-    } catch (fallbackError) {
-      console.error('❌ All PDF.js worker setups failed:', fallbackError);
-      
-      try {
-        // Strategy 3: Generic CDN fallback
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
-        console.log('🆘 Using generic CDN worker fallback');
-        return true;
-      } catch (finalError) {
-        console.error('💥 Complete PDF.js worker failure');
-        return false;
-      }
-    }
-  }
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+  console.log('✅ Using CDN worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 };
 
 setupPDFWorker();
@@ -256,8 +230,9 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
     const controlDiv = document.createElement('div');
     controlDiv.className = 'bg-white border shadow-sm mx-auto block mb-4 p-8';
     controlDiv.style.width = renderedPages[0]?.width + 'px' || '595px';
-    controlDiv.style.minHeight = '842px'; // A4 height
+    controlDiv.style.minHeight = '842px';
     
+    // Create React-like structure with functional elements
     controlDiv.innerHTML = `
       <div class="text-center space-y-6">
         <h1 class="text-2xl font-bold text-blue-700 mb-8">🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ</h1>
@@ -267,15 +242,16 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
             <h3 class="font-bold text-lg mb-3">1. ΑΛΛΑΓΗ ΠΟΣΟΣΤΟΥ ΤΙΜΩΝ</h3>
             <div class="flex items-center justify-center gap-3">
               <input type="number" placeholder="+10 ή -15" class="border px-3 py-2 w-24 text-center" id="percentageInput">
-              <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" onclick="applyPercentage()">ΕΦΑΡΜΟΓΗ</button>
+              <button class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700" id="applyPercentageBtn">ΕΦΑΡΜΟΓΗ</button>
             </div>
           </div>
           
           <div class="bg-gray-50 p-4 rounded border">
             <h3 class="font-bold text-lg mb-3">2. ΑΛΛΑΓΗ BANNER/ΛΟΓΟΤΥΠΟΥ</h3>
             <div class="flex items-center justify-center gap-3">
-              <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" onclick="changeBanner()">ΑΛΛΑΓΗ BANNER</button>
-              <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700" onclick="removeBanner()">ΑΦΑΙΡΕΣΗ BANNER</button>
+              <input type="file" accept="image/*" class="hidden" id="bannerInput">
+              <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700" id="changeBannerBtn">ΑΛΛΑΓΗ BANNER</button>
+              <button class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700" id="removeBannerBtn">ΑΦΑΙΡΕΣΗ BANNER</button>
             </div>
           </div>
           
@@ -296,11 +272,47 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
             <li>• Για αλλαγή τιμών: Εισάγετε ποσοστό (π.χ. +10, -15) και πατήστε "ΕΦΑΡΜΟΓΗ"</li>
             <li>• Για αλλαγή banner: Πατήστε "ΑΛΛΑΓΗ BANNER" και επιλέξτε εικόνα</li>
             <li>• Συμπληρώστε τα στοιχεία σας στα αντίστοιχα πεδία</li>
-            <li>• Μετά τις αλλαγές, χρησιμοποιήστε Αρχείο → Αποθήκευση ή Εκτύπωση</li>
+            <li>• Μετά τις αλλαγές, χρησιμοποιήστε Ctrl+P για εκτύπωση</li>
           </ul>
         </div>
       </div>
     `;
+    
+    // Add functional event listeners
+    const percentageBtn = controlDiv.querySelector('#applyPercentageBtn');
+    const bannerBtn = controlDiv.querySelector('#changeBannerBtn');
+    const removeBannerBtn = controlDiv.querySelector('#removeBannerBtn');
+    const bannerInput = controlDiv.querySelector('#bannerInput');
+    
+    percentageBtn?.addEventListener('click', () => {
+      const input = controlDiv.querySelector('#percentageInput') as HTMLInputElement;
+      const percentage = parseFloat(input.value);
+      if (!isNaN(percentage)) {
+        console.log('Applying percentage:', percentage);
+        // TODO: Implement price update logic
+        alert(`Εφαρμογή ποσοστού: ${percentage}%`);
+      }
+    });
+    
+    bannerBtn?.addEventListener('click', () => {
+      (bannerInput as HTMLInputElement)?.click();
+    });
+    
+    bannerInput?.addEventListener('change', (e) => {
+      const input = e.target as HTMLInputElement;
+      const file = input.files?.[0];
+      if (file) {
+        console.log('Banner file selected:', file.name);
+        // TODO: Implement banner replacement
+        alert(`Νέο banner: ${file.name}`);
+      }
+    });
+    
+    removeBannerBtn?.addEventListener('click', () => {
+      console.log('Removing banner');
+      // TODO: Implement banner removal
+      alert('Αφαίρεση banner');
+    });
     
     containerRef.current.appendChild(controlDiv);
   };
