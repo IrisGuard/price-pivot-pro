@@ -5,11 +5,21 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-// SIMPLIFIED PDF.js WORKER SETUP
+// ROBUST PDF.js WORKER SETUP WITH FALLBACKS
 const setupPDFWorker = () => {
   console.log('🔧 Setting up PDF.js worker...');
-  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-  console.log('✅ Using CDN worker:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+  
+  // Try multiple CDN sources for reliability
+  const workerSources = [
+    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
+    `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`,
+    `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`,
+    '/pdf.worker.js' // Local fallback
+  ];
+  
+  // Use the first available source
+  pdfjsLib.GlobalWorkerOptions.workerSrc = workerSources[0];
+  console.log('✅ PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
 };
 
 setupPDFWorker();
@@ -131,39 +141,39 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
 
   useEffect(() => {
     if (!pdfFile) {
+      console.log('🔄 PDF VIEWER: No PDF file provided');
       setPdfUrl(null);
       return;
     }
+
+    console.log('🔄 PDF VIEWER: Starting PDF load for:', pdfFile.name);
 
     const loadPDF = async () => {
       setLoading(true);
       setError(null);
       
-      // Create blob URL for fallback display
+      // Create blob URL for immediate fallback display
       const url = URL.createObjectURL(pdfFile);
       setPdfUrl(url);
+      console.log('✅ Blob URL created for immediate preview');
       
       try {
         console.log('🔄 Loading PDF with PDF.js...');
         const arrayBuffer = await pdfFile.arrayBuffer();
         console.log('📄 PDF arrayBuffer size:', arrayBuffer.byteLength);
         
-        // Enhanced loading with retries
+        // Simplified, reliable PDF.js configuration
         const loadingTask = pdfjsLib.getDocument({ 
           data: arrayBuffer,
-          verbosity: pdfjsLib.VerbosityLevel.WARNINGS,
-          useSystemFonts: true,
-          standardFontDataUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/web/`,
-          cMapUrl: `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/cmaps/`,
-          cMapPacked: true
+          verbosity: pdfjsLib.VerbosityLevel.ERRORS // Less verbose
         });
         
-        // Monitor loading progress
-        loadingTask.onProgress = (progress: any) => {
-          console.log(`📊 PDF Loading: ${progress.loaded}/${progress.total}`);
-        };
+        // Set timeout for loading
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('PDF loading timeout')), 10000);
+        });
         
-        const doc = await loadingTask.promise;
+        const doc = await Promise.race([loadingTask.promise, timeoutPromise]) as pdfjsLib.PDFDocumentProxy;
         console.log('✅ PDF loaded successfully, pages:', doc.numPages);
         
         if (doc.numPages === 0) {
@@ -173,8 +183,8 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         setPdfDoc(doc);
         setError(null);
       } catch (error) {
-        console.error('PDF.js loading failed:', error);
-        setError('Σφάλμα φόρτωσης PDF με PDF.js');
+        console.error('❌ PDF.js loading failed:', error);
+        setError('PDF.js loading failed - using browser fallback');
         setPdfDoc(null);
         
         // Extract text using fallback method for price detection
@@ -385,28 +395,20 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
             style={{ maxWidth: '100%' }}
           />
           
-          {(!pdfDoc && !loading && pdfUrl) && (
+          {/* Immediate Fallback Preview - Show ALWAYS when PDF.js fails */}
+          {(!pdfDoc && pdfUrl) && (
             <div className="w-full max-w-4xl">
-              <object
-                data={pdfUrl}
-                type="application/pdf"
-                className="w-full h-[800px] border shadow-lg"
+              <div className="mb-4 p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                <p className="text-sm text-orange-700">
+                  📄 Εμφάνιση με browser viewer (PDF.js {loading ? 'φορτώνει...' : 'απέτυχε'})
+                </p>
+              </div>
+              <iframe
+                src={pdfUrl}
+                className="w-full h-[800px] border shadow-lg rounded-lg"
                 style={{ minHeight: '600px' }}
-              >
-                <div className="text-center p-8 bg-white border rounded-lg shadow">
-                  <AlertTriangle className="h-12 w-12 mx-auto mb-4 text-orange-500" />
-                  <p className="text-lg font-medium mb-2">Δεν είναι δυνατή η προβολή του PDF</p>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Το πρόγραμμα περιήγησής σας δεν υποστηρίζει την ενσωματωμένη προβολή PDF
-                  </p>
-                  <Button 
-                    onClick={() => window.open(pdfUrl!, '_blank')}
-                    className="mt-4"
-                  >
-                    Άνοιγμα σε νέα καρτέλα
-                  </Button>
-                </div>
-              </object>
+                title="PDF Preview"
+              />
             </div>
           )}
         </div>

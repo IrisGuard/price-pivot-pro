@@ -27,11 +27,17 @@ const SupplierTool = () => {
   const { createInteractivePDF } = usePDFProcessor();
 
   const handleFactoryFileChange = (file: File | null) => {
-    console.log('File selected:', file?.name);
+    console.log('🔄 FILE UPLOAD DEBUG: File selected:', file?.name, 'Size:', file?.size);
+    if (!file) {
+      console.log('❌ No file selected');
+      return;
+    }
+    console.log('✅ Setting factory file state...');
     setFactoryFile(file);
     setShowEditor(false);
     setDetectedPrices([]);
     setCurrentPrices([]);
+    console.log('✅ File state updated, should render preview now');
   };
 
   const handlePricesDetected = (prices: PriceData[]) => {
