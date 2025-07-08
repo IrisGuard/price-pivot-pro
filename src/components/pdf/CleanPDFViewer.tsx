@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { toast } from '@/hooks/use-toast';
+import { getFileProcessingConfig, ENV_CONFIG } from '@/lib/config/environment';
+import { performanceMonitor } from '@/lib/performance/monitor';
 
 interface CustomerData {
   name: string;
@@ -40,6 +42,8 @@ export const CleanPDFViewer = ({
     phone: ''
   });
   const bannerInputRef = useRef<HTMLInputElement>(null);
+  
+  const config = getFileProcessingConfig();
 
   const handlePercentageApply = () => {
     const value = parseFloat(percentage);
@@ -64,12 +68,32 @@ export const CleanPDFViewer = ({
   const handleBannerFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file size
+      if (file.size > config.maxFileSize / 10) { // Banner should be smaller
+        toast({
+          title: "Μέγεθος εικόνας",
+          description: `Η εικόνα είναι πολύ μεγάλη (${Math.round(file.size / 1024)}KB). Μέγιστο: ${Math.round(config.maxFileSize / 10 / 1024)}KB`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Τύπος αρχείου",
+          description: "Παρακαλώ επιλέξτε μια εικόνα (PNG, JPG, JPEG, GIF)",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (onBannerChange) {
         onBannerChange(file);
       }
       toast({
         title: "Banner ενημερώθηκε",
-        description: `Νέο banner: ${file.name}`,
+        description: `Νέο banner: ${file.name} (${Math.round(file.size / 1024)}KB)`,
       });
     }
   };
