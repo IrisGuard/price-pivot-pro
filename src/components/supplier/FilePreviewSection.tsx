@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { HybridPDFViewer } from '@/components/pdf/HybridPDFViewer';
+import { UniversalFileProcessor } from '@/components/UniversalFileProcessor';
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
 
 interface PriceData {
@@ -16,15 +16,19 @@ interface FilePreviewSectionProps {
 
 export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectionProps) => {
   const [extractedText, setExtractedText] = useState<string>('');
+  const [contacts, setContacts] = useState<any[]>([]);
+  const [emails, setEmails] = useState<string[]>([]);
 
   return (
     <div className="w-full">
-      {/* PDF Viewer */}
+      {/* Universal File Processor */}
       <div className="w-full min-h-screen">
-        <HybridPDFViewer 
-          pdfFile={file}
+        <UniversalFileProcessor 
+          file={file}
           onPricesDetected={onPricesDetected}
           onTextExtracted={setExtractedText}
+          onContactsDetected={setContacts}
+          onEmailsDetected={setEmails}
         />
       </div>
 

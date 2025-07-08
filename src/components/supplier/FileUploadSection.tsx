@@ -16,9 +16,19 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
     const validation = validateFile(file);
     
     if (!validation.isValid) {
-      alert(`❌ ${validation.error}`);
+      // Enhanced error display with details
+      const errorMsg = [
+        `❌ ${validation.error}`,
+        validation.details ? `\nΛεπτομέρειες: ${validation.details.size}, ${validation.details.extension}` : ''
+      ].filter(Boolean).join('');
+      
+      alert(errorMsg);
       return;
     }
+    
+    // Success message with file type
+    const successMsg = `✅ Αρχείο ${validation.fileType?.toUpperCase()} φορτώθηκε επιτυχώς`;
+    console.log(successMsg, validation.details);
     
     onFileChange(file);
   };
@@ -63,7 +73,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
             <div>
               <h1 className="text-2xl font-bold mb-2">🔒 PDF Processor</h1>
               <p className="text-muted-foreground">
-                Επιλέξτε PDF ή RTF αρχείο για δημιουργία σφραγισμένης προσφοράς
+                Επιλέξτε PDF, RTF, CSV ή Excel αρχείο για επεξεργασία
               </p>
             </div>
             
@@ -72,7 +82,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.rtf"
+                accept=".pdf,.rtf,.csv,.xlsx,.xls"
                 onChange={handleFileInputChange}
                 className="hidden"
               />
