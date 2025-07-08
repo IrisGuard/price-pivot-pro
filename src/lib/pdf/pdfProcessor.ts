@@ -103,8 +103,68 @@ export class InteractivePDFProcessor {
     }
   }
 
+  private async applyPriceChanges(pdfDoc: PDFDocument, detectedPrices: any[], percentage: number): Promise<void> {
+    try {
+      const pages = pdfDoc.getPages();
+      const multiplier = 1 + (percentage / 100);
+      
+      detectedPrices.forEach(price => {
+        if (price.pageIndex < pages.length) {
+          const page = pages[price.pageIndex];
+          
+          // Clear existing price area
+          page.drawRectangle({
+            x: price.x - 10,
+            y: price.y - 5,
+            width: 80,
+            height: 15,
+            color: rgb(1, 1, 1)
+          });
+          
+          // Draw new price
+          const newPrice = Math.round(price.value * multiplier * 100) / 100;
+          page.drawText(`€${newPrice.toFixed(2)}`, {
+            x: price.x,
+            y: price.y,
+            size: 11,
+            color: rgb(0, 0, 0)
+          });
+        }
+      });
+    } catch (error) {
+      console.warn('Price changes failed:', error);
+    }
+  }
+
+  private async addCustomerData(pdfDoc: PDFDocument, customerData: any): Promise<void> {
+    try {
+      const pages = pdfDoc.getPages();
+      const lastPage = pages[pages.length - 1];
+      const { height } = lastPage.getSize();
+      
+      // Add customer data at bottom of last page
+      const dataText = [
+        `Πελάτης: ${customerData.name || 'N/A'}`,
+        `Επάγγελμα: ${customerData.profession || 'N/A'}`,
+        `Α.Φ.Μ.: ${customerData.taxId || 'N/A'}`,
+        `Τηλέφωνο: ${customerData.phone || 'N/A'}`
+      ];
+      
+      dataText.forEach((text, index) => {
+        lastPage.drawText(text, {
+          x: 50,
+          y: 100 - (index * 20),
+          size: 10,
+          color: rgb(0.3, 0.3, 0.3)
+        });
+      });
+    } catch (error) {
+      console.warn('Customer data addition failed:', error);
+    }
+  }
+
   async createSealedQuotationPDF(options: InteractivePDFOptions): Promise<Uint8Array> {
-    const { factoryPdfBytes, percentage = 0 } = options;
+    const { factoryPdfBytes, percentage = 0, customerData, detectedPrices } = options;
     let { bannerImageBytes } = options;
     
     try {
@@ -126,6 +186,16 @@ export class InteractivePDFProcessor {
       // Replace banner with supplier's banner (if available)
       if (bannerImageBytes) {
         await this.replaceBanner(this.pdfDoc, bannerImageBytes);
+      }
+      
+      // Apply price changes if detected prices exist
+      if (detectedPrices && detectedPrices.length > 0 && percentage !== 0) {
+        await this.applyPriceChanges(this.pdfDoc, detectedPrices, percentage);
+      }
+      
+      // Add customer data if provided
+      if (customerData) {
+        await this.addCustomerData(this.pdfDoc, customerData);
       }
       
       // Add interactive control panel

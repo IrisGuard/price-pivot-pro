@@ -15,6 +15,13 @@ export interface InteractivePDFOptions {
   factoryPdfBytes: Uint8Array;
   percentage: number;
   bannerImageBytes?: Uint8Array;
+  customerData?: {
+    name: string;
+    profession: string;
+    taxId: string;
+    phone: string;
+  };
+  detectedPrices?: PriceInfo[];
 }
 
 export interface ProcessingProgress {

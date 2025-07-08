@@ -58,12 +58,14 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
         currentPrices: detectedPrices.map(price => ({
           ...price,
           value: Math.round(price.value * (1 + currentPercentage / 100) * 100) / 100
-        }))
+        })),
+        bannerFile,
+        customerData
       });
     } catch (error) {
       console.error('Export failed:', error);
     }
-  }, [file, currentPercentage, detectedPrices, createInteractivePDF]);
+  }, [file, currentPercentage, detectedPrices, createInteractivePDF, bannerFile, customerData]);
 
   return (
     <div className="min-h-screen bg-background">

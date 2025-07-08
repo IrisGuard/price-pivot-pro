@@ -13,11 +13,18 @@ interface PDFProcessorOptions {
   percentage?: number;
   detectedPrices?: PriceData[];
   currentPrices?: PriceData[];
+  bannerFile?: File | null;
+  customerData?: {
+    name: string;
+    profession: string;
+    taxId: string;
+    phone: string;
+  };
 }
 
 export const usePDFProcessor = () => {
   const createInteractivePDF = useCallback(async (options: PDFProcessorOptions): Promise<void> => {
-    const { factoryFile, percentage, detectedPrices = [], currentPrices = [] } = options;
+    const { factoryFile, percentage, detectedPrices = [], currentPrices = [], bannerFile, customerData } = options;
     
     try {
       toast({
@@ -49,10 +56,19 @@ export const usePDFProcessor = () => {
         finalPercentage = totalOriginal > 0 ? ((totalCurrent - totalOriginal) / totalOriginal) * 100 : 0;
       }
 
-      // Create sealed interactive PDF with embedded JavaScript and default EUROPLAST banner
+      // Process banner if provided
+      let bannerImageBytes: Uint8Array | undefined;
+      if (bannerFile) {
+        bannerImageBytes = new Uint8Array(await bannerFile.arrayBuffer());
+      }
+
+      // Create sealed interactive PDF with all parameters
       const sealedPdfBytes = await interactivePDFProcessor.createSealedQuotationPDF({
         factoryPdfBytes,
         percentage: finalPercentage,
+        bannerImageBytes,
+        customerData,
+        detectedPrices
       });
 
       // Create download link with specific filename
