@@ -54,12 +54,16 @@ export class InteractivePDFProcessor {
       await this.bannerProcessor.replaceBanner(this.pdfDoc, bannerImageBytes);
     }
     
-    // Create embedded interactive control panel
-    await this.formCreator.createEmbeddedControlPanel(this.pdfDoc, this.form);
-    
     // Add comprehensive JavaScript engine with detected prices
     const priceCoordinates = await this.priceProcessor.getDetectedPrices();
     await this.jsEngine.addAdvancedJavaScriptEngine(this.pdfDoc, priceCoordinates);
+    
+    // Add embedded control panel as last page of PDF
+    const { controlPanelCreator } = await import('./controlPanelCreator');
+    await controlPanelCreator.addControlPage(this.pdfDoc, priceCoordinates);
+    
+    // Create interactive form fields for the control panel
+    await this.formCreator.createInteractiveControlFields(this.pdfDoc, this.form);
     
     return await this.pdfDoc.save();
   }

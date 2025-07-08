@@ -167,6 +167,11 @@ All colors MUST be HSL.
     display: none !important;
   }
   
+  /* Hide the last page (control panel) when printing PDFs */
+  .pdf-viewer .pdf-page:last-child {
+    display: none !important;
+  }
+  
   /* Clean page layout for printing */
   body {
     background: white !important;
