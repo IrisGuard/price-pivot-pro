@@ -80,12 +80,25 @@ export const HybridPDFViewer = ({
         <div className="flex-1 overflow-auto">
           <div className="flex justify-center py-6">
             <div className="w-full max-w-4xl">
+              {/* Enhanced Loading State */}
+              {loading && (
+                <div className="flex items-center justify-center min-h-[400px]">
+                  <div className="text-center space-y-4">
+                    <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
+                    <div className="space-y-2">
+                      <p className="text-lg font-medium text-foreground">Φόρτωση αρχείου...</p>
+                      <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {/* PDF.js Renderer */}
-              {!useNativeFallback && pdfDoc && (
+              {!useNativeFallback && pdfDoc && !loading && (
                 <PDFCanvasRenderer
                   pdfDoc={pdfDoc}
                   scale={scale}
-                  loading={loading}
+                  loading={false}
                   onTextExtracted={onTextExtracted}
                   onPricesDetected={onPricesDetected}
                   onRenderComplete={(success) => {
@@ -97,18 +110,8 @@ export const HybridPDFViewer = ({
               )}
               
               {/* Browser Native Fallback */}
-              {useNativeFallback && pdfUrl && (
+              {useNativeFallback && pdfUrl && !loading && (
                 <PDFBrowserFallback pdfUrl={pdfUrl} />
-              )}
-
-              {/* Loading State */}
-              {loading && !pdfUrl && (
-                <div className="flex items-center justify-center min-h-[400px]">
-                  <div className="text-center space-y-4">
-                    <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-                    <p className="text-muted-foreground">Φόρτωση PDF...</p>
-                  </div>
-                </div>
               )}
             </div>
           </div>

@@ -28,27 +28,29 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
         />
       </div>
 
-      {/* Control Panel */}
+      {/* Control Panel - Aligned with PDF Viewer */}
       <div className="w-full bg-gray-50 border-t">
-        <div className="container mx-auto max-w-4xl py-8">
-          <ProfessionalControlPanel 
-            pageWidth={595} // A4 width
-            isAdminMode={true}
-            onPercentageChange={(percentage) => {
-              console.log('Percentage change:', percentage);
-            }}
-            onBannerChange={(file) => {
-              console.log('Banner change:', file);
-            }}
-            onCustomerDataChange={(data) => {
-              console.log('Customer data change:', data);
-            }}
-            onExportCleanPDF={async () => {
-              console.log('Export clean PDF requested');
-              // Basic export functionality
-              window.print();
-            }}
-          />
+        <div className="flex justify-center py-6">
+          <div className="w-full max-w-4xl px-6">
+            <ProfessionalControlPanel 
+              pageWidth={595} // A4 width
+              isAdminMode={true}
+              onPercentageChange={(percentage) => {
+                console.log('Percentage change:', percentage);
+              }}
+              onBannerChange={(file) => {
+                console.log('Banner change:', file);
+              }}
+              onCustomerDataChange={(data) => {
+                console.log('Customer data change:', data);
+              }}
+              onExportCleanPDF={async () => {
+                console.log('Export clean PDF requested');
+                // Basic export functionality
+                window.print();
+              }}
+            />
+          </div>
         </div>
       </div>
     </div>

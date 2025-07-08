@@ -76,68 +76,88 @@ export class RTFProcessor {
   }
   
   private parseRTFToText(rtfData: string): string {
+    // Critical fix: Extract actual document content, not font metadata
     let text = rtfData;
+    
+    // First, isolate the document content (after font table and before closing brace)
+    const contentMatch = text.match(/\\fonttbl[^}]*}[^}]*}(.+)$/s);
+    if (contentMatch) {
+      text = contentMatch[1];
+    } else {
+      // Fallback: remove everything before first actual content
+      const fallbackMatch = text.match(/}([^\\{]+.*)/s);
+      if (fallbackMatch) {
+        text = fallbackMatch[1];
+      }
+    }
     
     // Handle Unicode escape sequences first (for Greek characters)
     text = text.replace(/\\u(\d+)\?/g, (match, code) => {
       const charCode = parseInt(code, 10);
-      return String.fromCharCode(charCode);
+      if (charCode >= 32 && charCode < 55296) { // Valid Unicode range
+        return String.fromCharCode(charCode);
+      }
+      return '';
     });
     
     // Handle hex escape sequences \'xx
     text = text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => {
       const charCode = parseInt(hex, 16);
-      return String.fromCharCode(charCode);
+      if (charCode >= 32) { // Printable characters only
+        return String.fromCharCode(charCode);
+      }
+      return ' ';
     });
     
+    // Enhanced RTF content extraction
     return text
-      // Remove RTF header and version
-      .replace(/^{\s*\\rtf1[^\\]*/, '')
-      // Remove font table
-      .replace(/\\fonttbl\s*{[^}]*(?:{[^}]*}[^}]*)*}/g, '')
+      // Remove RTF header and version info
+      .replace(/^{\s*\\rtf1[^\\{}]*/, '')
+      // CRITICAL: Completely remove font table (this was causing the font names issue)
+      .replace(/\\fonttbl\s*{[^{}]*(?:{[^{}]*}[^{}]*)*}/g, '')
       // Remove color table
-      .replace(/\\colortbl\s*[^}]*}/g, '')
+      .replace(/\\colortbl[^}]*;/g, '')
       // Remove style definitions
-      .replace(/\\stylesheet\s*{[^}]*(?:{[^}]*}[^}]*)*}/g, '')
+      .replace(/\\stylesheet\s*{[^{}]*(?:{[^{}]*}[^{}]*)*}/g, '')
       // Remove document info
-      .replace(/\\info\s*{[^}]*(?:{[^}]*}[^}]*)*}/g, '')
-      // Remove generator and other metadata
-      .replace(/\\generator[^;]*;/g, '')
-      .replace(/\\viewkind\d+/g, '')
-      .replace(/\\uc\d+/g, '')
-      .replace(/\\deff\d+/g, '')
-      .replace(/\\deflang\d+/g, '')
-      .replace(/\\deflangfe\d+/g, '')
-      // Convert RTF formatting to plain text
+      .replace(/\\info\s*{[^{}]*}/g, '')
+      // Remove specific metadata
+      .replace(/\\generator[^;{}]*[;}]/g, '')
+      .replace(/\\viewkind\d+\s*/g, '')
+      .replace(/\\uc\d+\s*/g, '')
+      .replace(/\\deff\d+\s*/g, '')
+      .replace(/\\deflang\d+\s*/g, '')
+      .replace(/\\deflangfe\d+\s*/g, '')
+      // Convert RTF paragraph and formatting to text
       .replace(/\\par\s*/g, '\n')
       .replace(/\\line\s*/g, '\n')
       .replace(/\\tab\s*/g, '\t')
       .replace(/\\page\s*/g, '\n\n--- Page Break ---\n\n')
-      // Remove font and size commands
-      .replace(/\\f\d+/g, '')
-      .replace(/\\fs\d+/g, '')
-      .replace(/\\cf\d+/g, '')
-      .replace(/\\cb\d+/g, '')
+      // Remove font references and size commands
+      .replace(/\\f\d+\s*/g, '')
+      .replace(/\\fs\d+\s*/g, '')
+      .replace(/\\cf\d+\s*/g, '')
+      .replace(/\\cb\d+\s*/g, '')
       // Remove formatting commands
-      .replace(/\\b\s*/g, '') // bold
-      .replace(/\\i\s*/g, '') // italic
-      .replace(/\\ul\s*/g, '') // underline
-      .replace(/\\b0\s*/g, '') // bold off
-      .replace(/\\i0\s*/g, '') // italic off
-      .replace(/\\ul0\s*/g, '') // underline off
-      // Remove remaining control words
-      .replace(/\\[a-zA-Z]+\d*\s?/g, ' ')
-      // Remove control characters but preserve Greek characters
+      .replace(/\\b\d*\s*/g, '')  // bold
+      .replace(/\\i\d*\s*/g, '')  // italic
+      .replace(/\\ul\d*\s*/g, '') // underline
+      // Remove ALL remaining RTF control words (this prevents font names from appearing)
+      .replace(/\\[a-zA-Z]+\d*\s*/g, ' ')
+      // Remove control characters
       .replace(/\\[^a-zA-Z\s]/g, '')
-      // Clean up braces
-      .replace(/[{}]/g, '')
-      // Normalize whitespace
+      // Clean up braces and structure
+      .replace(/[{}]/g, ' ')
+      // Normalize whitespace thoroughly
       .replace(/\s+/g, ' ')
       .replace(/\n\s+/g, '\n')
       .replace(/\s+\n/g, '\n')
       .replace(/^\s+|\s+$/gm, '') // trim each line
+      // Remove any remaining artifacts
+      .replace(/[^\w\s\n\t\u0370-\u03FF\u1F00-\u1FFF.,;:!?€$-]/g, ' ')
       // Final cleanup
       .replace(/\n{3,}/g, '\n\n') // max 2 consecutive newlines
+      .replace(/\s{2,}/g, ' ') // max 1 space
       .trim();
   }
   

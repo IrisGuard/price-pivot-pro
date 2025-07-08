@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import { HybridPDFViewer } from './pdf/HybridPDFViewer';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
+import { Card } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertTriangle, FileText } from 'lucide-react';
 
 interface PriceData {
   value: number;
@@ -56,30 +59,66 @@ export const UniversalFileViewer = ({
 
   if (!file) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-muted-foreground">Δεν έχει επιλεχθεί αρχείο</p>
-      </div>
+      <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
+        <div className="text-center text-muted-foreground">
+          <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
+          <p className="text-lg">Δεν έχει επιλεχθεί αρχείο</p>
+          <p className="text-sm">Επιλέξτε ένα PDF ή RTF για να ξεκινήσετε</p>
+        </div>
+      </Card>
+    );
+  }
+
+  // Handle unsupported file types
+  const fileExtension = file.name.toLowerCase().split('.').pop();
+  const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
+  const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+
+  if (!isPDF && !isRTF) {
+    return (
+      <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
+        <div className="text-center">
+          <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-destructive" />
+          <h3 className="text-lg font-semibold mb-2">Μη υποστηριζόμενος τύπος αρχείου</h3>
+          <p className="text-muted-foreground">Το σύστημα υποστηρίζει μόνο αρχεία PDF και RTF</p>
+        </div>
+      </Card>
     );
   }
 
   if (isConverting) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
         <div className="text-center space-y-4">
-          <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-          <p className="text-muted-foreground">Μετατροπή RTF σε PDF...</p>
-          <p className="text-xs text-muted-foreground">Παρακαλώ περιμένετε...</p>
+          <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
+          <div className="space-y-2">
+            <p className="text-lg font-medium">Μετατροπή RTF σε PDF...</p>
+            <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
+          </div>
         </div>
-      </div>
+      </Card>
     );
   }
 
+  // Show conversion notice for RTF files
+  const showRTFNotice = isRTF && convertedPdfFile;
+
   // Use Hybrid PDF viewer for production stability
   return (
-    <HybridPDFViewer
-      pdfFile={convertedPdfFile}
-      onPricesDetected={onPricesDetected}
-      onTextExtracted={onTextExtracted}
-    />
+    <div className="w-full space-y-2">
+      {showRTFNotice && (
+        <Alert>
+          <FileText className="h-4 w-4" />
+          <AlertDescription>
+            Το RTF αρχείο μετατράπηκε αυτόματα σε PDF για βέλτιστη προβολή
+          </AlertDescription>
+        </Alert>
+      )}
+      <HybridPDFViewer
+        pdfFile={convertedPdfFile}
+        onPricesDetected={onPricesDetected}
+        onTextExtracted={onTextExtracted}
+      />
+    </div>
   );
 };
