@@ -25,15 +25,16 @@ export const HybridPDFViewer = ({
   
   const { pdfDoc, loading, error, pdfUrl } = usePDFLoader(pdfFile);
 
-  // Auto-fallback to browser native if PDF.js fails repeatedly
+  // Auto-fallback to browser native if PDF.js fails or takes too long
   useEffect(() => {
-    if (error && pdfUrl && !forceNativeFallback) {
+    if (pdfFile && !pdfDoc && !forceNativeFallback) {
       const timer = setTimeout(() => {
+        console.log('🔄 PDF loading timeout - switching to native fallback');
         setForceNativeFallback(true);
-      }, 2000);
+      }, 6000); // 6 seconds total timeout
       return () => clearTimeout(timer);
     }
-  }, [error, pdfUrl, forceNativeFallback]);
+  }, [pdfFile, pdfDoc, forceNativeFallback]);
 
   // Force re-render when detected prices change (real-time preview)
   useEffect(() => {
@@ -72,15 +73,15 @@ export const HybridPDFViewer = ({
 
       {/* Professional A4 Document Layout */}
       <div className="flex flex-col items-center">
-        {/* Enhanced Loading State */}
-        {loading && (
+        {/* Enhanced Loading State with Timeout Protection */}
+        {loading && !forceNativeFallback && (
           <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '400px' }}>
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-4 p-8">
                 <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
                 <div className="space-y-2">
-                  <p className="text-lg font-medium text-foreground">Φόρτωση αρχείου...</p>
-                  <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
+                  <p className="text-lg font-medium text-foreground">Φόρτωση PDF...</p>
+                  <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε (μέγιστο 6 δευτερόλεπτα)</p>
                 </div>
               </div>
             </div>
@@ -103,13 +104,18 @@ export const HybridPDFViewer = ({
           />
         )}
         
+        {/* Native PDF Fallback */}
+        {(forceNativeFallback || (!pdfDoc && !loading && pdfUrl)) && (
+          <PDFBrowserFallback pdfUrl={pdfUrl!} />
+        )}
+        
         {/* No PDF loaded state */}
-        {!pdfDoc && !loading && (
+        {!pdfDoc && !loading && !pdfUrl && !forceNativeFallback && (
           <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '297mm' }}>
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-muted-foreground">
-                <p className="text-lg">Φόρτωση PDF...</p>
-                <p className="text-sm">Παρακαλώ περιμένετε</p>
+                <p className="text-lg">Αναμονή αρχείου...</p>
+                <p className="text-sm">Επιλέξτε ένα PDF για προβολή</p>
               </div>
             </div>
           </div>

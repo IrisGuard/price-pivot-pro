@@ -39,50 +39,38 @@ export const usePDFLoader = (pdfFile: File | null) => {
           throw new Error(`File too large: ${Math.round(pdfFile.size / 1024 / 1024)}MB > ${Math.round(config.maxFileSize / 1024 / 1024)}MB`);
         }
         
-        const result = await withPerformanceTracking(
-          operationId,
-          pdfFile.size,
-          async () => {
-            const arrayBuffer = await pdfFile.arrayBuffer();
-            
-            // Enhanced loading with timeout and retry strategies
-            const loadWithRetry = async (attempt = 1): Promise<pdfjsLib.PDFDocumentProxy> => {
-              try {
-                loadingTask = pdfjsLib.getDocument({ 
-                  data: arrayBuffer,
-                  verbosity: pdfjsLib.VerbosityLevel.ERRORS,
-                  disableAutoFetch: false,
-                  disableStream: false,
-                  useSystemFonts: true,
-                  standardFontDataUrl: '/fonts/',
-                  useWorkerFetch: false
-                });
-                
-                // Add timeout support
-                const timeoutPromise = new Promise<never>((_, reject) => {
-                  setTimeout(() => reject(new Error('PDF loading timeout')), config.timeout);
-                });
-                
-                const doc = await Promise.race([loadingTask.promise, timeoutPromise]);
-                
-                if (doc.numPages === 0) {
-                  throw new Error('PDF has no pages');
-                }
-                
-                return doc;
-              } catch (error) {
-                if (attempt < 3) {
-                  // Wait and retry with different config
-                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-                  return loadWithRetry(attempt + 1);
-                }
-                throw error;
+        // Global 5-second timeout for PDF loading
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('PDF φόρτωση timeout μετά από 5 δευτερόλεπτα')), 5000);
+        });
+
+        const result = await Promise.race([
+          withPerformanceTracking(
+            operationId,
+            pdfFile.size,
+            async () => {
+              const arrayBuffer = await pdfFile.arrayBuffer();
+              
+              loadingTask = pdfjsLib.getDocument({ 
+                data: arrayBuffer,
+                verbosity: pdfjsLib.VerbosityLevel.ERRORS,
+                disableAutoFetch: false,
+                disableStream: false,
+                useSystemFonts: true,
+                useWorkerFetch: false
+              });
+              
+              const doc = await loadingTask.promise;
+              
+              if (doc.numPages === 0) {
+                throw new Error('PDF has no pages');
               }
-            };
-            
-            return await loadWithRetry();
-          }
-        );
+              
+              return doc;
+            }
+          ),
+          timeoutPromise
+        ]);
         
         setPdfDoc(result);
         setError(null);
