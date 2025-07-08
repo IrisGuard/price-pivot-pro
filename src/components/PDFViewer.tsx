@@ -3,16 +3,13 @@ import * as pdfjsLib from 'pdfjs-dist';
 import { AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { usePDFWorkerSetup } from '@/hooks/usePDFWorkerSetup';
 import { usePriceExtraction } from '@/hooks/usePriceExtraction';
 import { usePDFRendering } from '@/hooks/usePDFRendering';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { PDFCanvasContainer } from '@/components/pdf/PDFCanvasContainer';
 import { CleanPDFViewer } from '@/components/pdf/CleanPDFViewer';
 
-// Initialize PDF.js worker
-const { setupPDFWorker } = usePDFWorkerSetup();
-setupPDFWorker();
+// Worker is configured in main.tsx - no setup needed here
 
 interface PDFViewerProps {
   pdfFile: File | null;

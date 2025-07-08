@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { usePDFWorkerSetup } from '@/hooks/usePDFWorkerSetup';
 
-// Initialize PDF.js worker
-const { setupPDFWorker } = usePDFWorkerSetup();
-setupPDFWorker();
+// Worker is configured in main.tsx - no setup needed here
 
 export const usePDFLoader = (pdfFile: File | null) => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
