@@ -26,6 +26,7 @@ interface ProcessingResult {
 
 interface UniversalFileProcessorProps {
   file: File | null;
+  detectedPrices?: PriceData[];
   onTextExtracted?: (text: string) => void;
   onPricesDetected?: (prices: PriceData[]) => void;
   onContactsDetected?: (contacts: any[]) => void;
@@ -34,6 +35,7 @@ interface UniversalFileProcessorProps {
 
 export const UniversalFileProcessor = ({ 
   file, 
+  detectedPrices,
   onTextExtracted, 
   onPricesDetected,
   onContactsDetected,
@@ -245,6 +247,7 @@ export const UniversalFileProcessor = ({
       )}
       <HybridPDFViewer
         pdfFile={processingResult?.content}
+        detectedPrices={detectedPrices}
         onPricesDetected={onPricesDetected}
         onTextExtracted={onTextExtracted}
       />

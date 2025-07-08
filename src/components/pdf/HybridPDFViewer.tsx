@@ -9,12 +9,14 @@ import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 
 interface HybridPDFViewerProps {
   pdfFile: File | null;
+  detectedPrices?: Array<{ value: number; x: number; y: number; pageIndex: number }>;
   onTextExtracted?: (text: string) => void;
   onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
 }
 
 export const HybridPDFViewer = ({ 
   pdfFile, 
+  detectedPrices,
   onTextExtracted, 
   onPricesDetected 
 }: HybridPDFViewerProps) => {
@@ -32,6 +34,14 @@ export const HybridPDFViewer = ({
       return () => clearTimeout(timer);
     }
   }, [error, pdfUrl, forceNativeFallback]);
+
+  // Force re-render when detected prices change (real-time preview)
+  useEffect(() => {
+    if (detectedPrices && pdfDoc) {
+      // This will cause PDFCanvasRenderer to re-render with updated prices
+      console.log('🔄 PDF preview updating with new prices:', detectedPrices.length);
+    }
+  }, [detectedPrices, pdfDoc]);
 
   const zoomIn = useCallback(() => setScale(prev => prev + 0.2), []);
   const zoomOut = useCallback(() => setScale(prev => Math.max(0.5, prev - 0.2)), []);

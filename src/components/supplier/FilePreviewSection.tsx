@@ -80,6 +80,7 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
       <div className="w-full bg-background">
         <UniversalFileProcessor 
           file={file}
+          detectedPrices={detectedPrices}
           onPricesDetected={handlePricesDetected}
           onTextExtracted={setExtractedText}
           onContactsDetected={setContacts}
