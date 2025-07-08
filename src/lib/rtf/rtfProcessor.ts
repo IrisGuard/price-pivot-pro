@@ -76,54 +76,91 @@ export class RTFProcessor {
   }
   
   private parseRTFToText(rtfData: string): string {
-    // ΚΡΙΣΙΜΗ ΔΙΟΡΘΩΣΗ: Αφαίρεση όλων των RTF metadata πριν το parsing
+    // ΠΡΟΗΓΜΕΝΗ RTF PARSING - ΠΛΗΡΗΣ ΑΝΑΔΙΑΡΘΡΩΣΗ
     let text = rtfData;
     
-    // ΒΗΜΑ 1: Αφαίρεση ολόκληρου του RTF header και font table
-    text = text.replace(/^{\s*\\rtf1[^{]*/, ''); // RTF header
-    text = text.replace(/\\fonttbl\s*{[^{}]*(?:{[^{}]*}[^{}]*)*}/g, ''); // Font table
-    text = text.replace(/\\colortbl[^}]*;/g, ''); // Color table
-    text = text.replace(/\\stylesheet[^}]*}/g, ''); // Stylesheet
-    text = text.replace(/\\info\s*{[^{}]*(?:{[^{}]*}[^{}]*)*}/g, ''); // Info block
+    // ΦΑΣΗ 1: Αφαίρεση RTF Structure και Headers
+    // Αφαίρεση RTF version και header block
+    text = text.replace(/^{\s*\\rtf1\\[^{}]*/, '');
     
-    // ΒΗΜΑ 2: Αφαίρεση όλων των control sequences που δημιουργούν "κορακίστικους" χαρακτήρες
-    text = text.replace(/\\[a-zA-Z]+\d*\s*/g, ' '); // Όλα τα RTF control words
-    text = text.replace(/\\[^a-zA-Z\s]/g, ''); // Special characters
+    // ΦΑΣΗ 2: Στοχευμένη αφαίρεση Font Tables και Metadata
+    // Βελτιωμένη αφαίρεση font table με nested handling
+    text = text.replace(/\\fonttbl\s*{(?:[^{}]*{[^{}]*})*[^{}]*}/g, '');
+    // Αφαίρεση color table
+    text = text.replace(/\\colortbl[^}]*}/g, '');
+    // Αφαίρεση stylesheet
+    text = text.replace(/\\stylesheet[^}]*}/g, '');
+    // Αφαίρεση info block
+    text = text.replace(/\\info\s*{[^{}]*}/g, '');
+    // Αφαίρεση generator info
+    text = text.replace(/\\generator[^;]*;/g, '');
     
-    // Handle Unicode escape sequences first (for Greek characters)
-    text = text.replace(/\\u(\d+)\?/g, (match, code) => {
+    // ΦΑΣΗ 3: Πρώτη περιοχή - Unicode characters (Ελληνικά)
+    // Enhanced Unicode handling για Ελληνικούς χαρακτήρες
+    text = text.replace(/\\u(\d+)\\?'?[0-9a-fA-F]*\?/g, (match, code) => {
       const charCode = parseInt(code, 10);
-      if (charCode >= 32 && charCode < 55296) { // Valid Unicode range
-        return String.fromCharCode(charCode);
+      // Extended range για Ελληνικούς χαρακτήρες
+      if (charCode >= 32 && charCode <= 65535) {
+        try {
+          return String.fromCharCode(charCode);
+        } catch {
+          return ' ';
+        }
       }
       return '';
     });
     
-    // Handle hex escape sequences \'xx
+    // ΦΑΣΗ 4: Hex character sequences
     text = text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => {
-      const charCode = parseInt(hex, 16);
-      if (charCode >= 32) { // Printable characters only
-        return String.fromCharCode(charCode);
+      try {
+        const charCode = parseInt(hex, 16);
+        if (charCode >= 32 && charCode <= 255) {
+          return String.fromCharCode(charCode);
+        }
+      } catch {
+        return ' ';
       }
-      return ' ';
+      return '';
     });
     
-    // ΒΗΜΑ 3: Μετατροπή RTF formatting σε απλό κείμενο
-    text = text.replace(/\\par\s*/g, '\n'); // Παράγραφοι
-    text = text.replace(/\\line\s*/g, '\n'); // Νέες γραμμές
-    text = text.replace(/\\tab\s*/g, '\t'); // Tabs
+    // ΦΑΣΗ 5: RTF Control Words - Εκτεταμένη λίστα
+    // Formatting controls
+    text = text.replace(/\\(b|i|ul|strike|sub|super|scaps|caps)\d*\s*/g, '');
+    // Font και size controls  
+    text = text.replace(/\\(f|fs|cf|cb|highlight)\d+\s*/g, '');
+    // Paragraph formatting
+    text = text.replace(/\\(ql|qr|qc|qj|li|ri|fi|sb|sa)\d*\s*/g, '');
+    // Page formatting
+    text = text.replace(/\\(paperw|paperh|margl|margr|margt|margb)\d+\s*/g, '');
+    // Generic control words
+    text = text.replace(/\\[a-zA-Z]+\d*\s*/g, ' ');
     
-    // ΒΗΜΑ 4: Καθαρισμός από άγνωστους χαρακτήρες και normalize
-    text = text.replace(/[{}]/g, ' '); // Αφαίρεση braces
-    text = text.replace(/\s+/g, ' '); // Normalize whitespace
-    text = text.replace(/^\s+|\s+$/gm, ''); // Trim κάθε γραμμή
+    // ΦΑΣΗ 6: Formatting conversion
+    text = text.replace(/\\par\b/g, '\n');
+    text = text.replace(/\\line\b/g, '\n');
+    text = text.replace(/\\tab\b/g, '\t');
+    text = text.replace(/\\cell\b/g, '\t');
+    text = text.replace(/\\row\b/g, '\n');
     
-    // ΒΗΜΑ 5: Αφαίρεση τελικών artifacts και "κορακίστικων" χαρακτήρων
-    text = text.replace(/[^\w\s\n\t\u0370-\u03FF\u1F00-\u1FFF.,;:!?€$%()-]/g, ' ');
-    text = text.replace(/\n{3,}/g, '\n\n'); // Μέγιστο 2 κενές γραμμές
-    text = text.replace(/\s{2,}/g, ' '); // Μέγιστο 1 κενό
+    // ΦΑΣΗ 7: Cleanup και normalization
+    // Αφαίρεση brackets
+    text = text.replace(/[{}]/g, ' ');
+    // Αφαίρεση ειδικών RTF sequences
+    text = text.replace(/\\[^a-zA-Z\s]/g, '');
+    // Normalization whitespace
+    text = text.replace(/\s+/g, ' ');
+    text = text.replace(/^\s+|\s+$/gm, '');
     
-    return text.trim();
+    // ΦΑΣΗ 8: Τελικός καθαρισμός non-printable characters
+    // Διατήρηση μόνο έγκυρων χαρακτήρων (Latin, Greek, punctuation, numbers)
+    text = text.replace(/[^\u0020-\u007E\u0370-\u03FF\u1F00-\u1FFF\s\n\t]/g, ' ');
+    
+    // Final cleanup
+    text = text.replace(/\n{3,}/g, '\n\n');
+    text = text.replace(/[ \t]{2,}/g, ' ');
+    text = text.trim();
+    
+    return text;
   }
   
   private extractPricesFromRTF(text: string): Array<{ value: number; x: number; y: number; pageIndex: number }> {
