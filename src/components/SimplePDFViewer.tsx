@@ -114,15 +114,44 @@ export const SimplePDFViewer = ({ file, onTextExtracted, onPricesDetected }: Sim
               style={{ minHeight: '800px' }}
               className="border-0"
               title="PDF Preview"
-              onLoad={() => {
+              onLoad={async () => {
                 setLoading(false);
-                // Extract text for price detection (basic implementation)
-                if (onTextExtracted) {
-                  onTextExtracted('PDF loaded successfully');
-                }
-                if (onPricesDetected) {
-                  // Mock price detection - in real app this would parse the PDF
-                  onPricesDetected([]);
+                
+                // Real price detection using PDF.js
+                try {
+                  if (pdfUrl && onPricesDetected) {
+                    const { realPriceDetector } = await import('@/lib/pdf/realPriceDetector');
+                    const pdfjsLib = await import('pdfjs-dist');
+                    
+                    // Set worker
+                    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    
+                    let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+                    
+                    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+                      const page = await pdfDoc.getPage(pageNum);
+                      const textContent = await page.getTextContent();
+                      const textItems = textContent.items
+                        .filter((item): item is any => 'str' in item)
+                        .map((item: any) => item.str)
+                        .join(' ');
+                      
+                      const pagePrices = realPriceDetector.extractPricesFromText(textItems, pageNum - 1);
+                      allPrices = [...allPrices, ...pagePrices];
+                    }
+                    
+                    onPricesDetected(allPrices);
+                    if (onTextExtracted) {
+                      onTextExtracted('PDF processed with price detection');
+                    }
+                  }
+                } catch (error) {
+                  console.warn('Price detection failed, continuing with basic PDF display:', error);
+                  if (onPricesDetected) onPricesDetected([]);
+                  if (onTextExtracted) onTextExtracted('PDF loaded successfully');
                 }
               }}
               onError={() => setError('Σφάλμα φόρτωσης PDF')}

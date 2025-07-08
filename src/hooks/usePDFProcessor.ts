@@ -68,7 +68,7 @@ export const usePDFProcessor = () => {
 
       toast({
         title: "✅ ΣΦΡΑΓΙΣΜΕΝΟ PDF ΕΤΟΙΜΟ",
-        description: "Το PDF περιέχει ενσωματωμένες λειτουργίες για τον πελάτη. Μόνο αυτό το αρχείο θα δουλεύει με τις διαδραστικές λειτουργίες.",
+        description: `Το PDF (${(sealedPdfBytes.length / 1024).toFixed(1)} KB) περιέχει όλες τις λειτουργίες για τον πελάτη.`,
       });
     } catch (error) {
       console.error('Error creating interactive PDF:', error);
