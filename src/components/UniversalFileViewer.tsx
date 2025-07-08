@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ProfessionalPDFViewer } from './pdf/ProfessionalPDFViewer';
+import { SimplePDFViewer } from './pdf/SimplePDFViewer';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
 
 interface PriceData {
@@ -74,12 +74,12 @@ export const UniversalFileViewer = ({
     );
   }
 
-  // Always use Professional PDF viewer for consistency and control page support
-  return (
-    <ProfessionalPDFViewer
-      pdfFile={convertedPdfFile}
-      onPricesDetected={onPricesDetected}
-      onTextExtracted={onTextExtracted}
-    />
+  // Use Simple PDF viewer for Phase 1 stability
+  return convertedPdfFile ? (
+    <SimplePDFViewer file={convertedPdfFile} />
+  ) : (
+    <div className="flex items-center justify-center min-h-[400px]">
+      <p className="text-muted-foreground">Μη υποστηριζόμενος τύπος αρχείου</p>
+    </div>
   );
 };
