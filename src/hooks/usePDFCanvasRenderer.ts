@@ -75,109 +75,160 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
         return;
       }
 
-      try {
-        // Avoid innerHTML clearing - only clear if needed
-        if (canvasesRef.current.length > 0) {
-          canvasesRef.current.forEach(canvas => {
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-            }
-            canvas.remove();
-          });
-          canvasesRef.current = [];
-        }
-        
-        let allText = '';
-        let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
-        const newCanvases: HTMLCanvasElement[] = [];
+      let renderAttempts = 0;
+      const maxRetries = 2;
 
-        for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-          if (isCancelled) break;
+      const attemptRender = async (): Promise<boolean> => {
+        try {
+          // Clear previous content
+          if (canvasesRef.current.length > 0) {
+            canvasesRef.current.forEach(canvas => {
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+              }
+              canvas.remove();
+            });
+            canvasesRef.current = [];
+          }
           
-          const page = await pdfDoc.getPage(pageNum);
-          const viewport = page.getViewport({ scale });
-          
-          // Create canvas element
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          if (!ctx) continue;
+          let allText = '';
+          let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
+          const newCanvases: HTMLCanvasElement[] = [];
 
-          // Set canvas dimensions
-          canvas.height = viewport.height;
-          canvas.width = viewport.width;
-          
-          // Apply A4 styling - exact 595px width centered
-          canvas.style.maxWidth = '595px';
-          canvas.style.width = '595px';
-          canvas.style.height = 'auto';
-          canvas.style.display = 'block';
-          canvas.style.margin = '0 auto 16px auto';
-          canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-          canvas.style.border = '1px solid #e5e7eb';
-          canvas.style.backgroundColor = 'white';
-          canvas.id = `pdf-page-${pageNum}`;
-
-          // Render PDF page to canvas
-          const renderContext = {
-            canvasContext: ctx,
-            viewport: viewport,
-          };
-
-          await page.render(renderContext).promise;
-          
-          if (!isCancelled) {
-            container.appendChild(canvas);
-            newCanvases.push(canvas);
-
-            // Extract text content for processing
+          for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
+            if (isCancelled) break;
+            
             try {
-              const textContent = await page.getTextContent();
-              const textItems = textContent.items
-                .filter((item): item is any => 'str' in item)
-                .map((item: any) => item.str)
-                .join(' ');
-
-              allText += textItems + ' ';
-
-              // Extract prices from this page
-              const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
-              const pagePrices = priceMatches.map((match, index) => ({
-                value: parseFloat(match.replace(',', '.')),
-                x: 450 + (index * 30),
-                y: 650 - index * 25,
-                pageIndex: pageNum - 1
-              }));
+              const page = await pdfDoc.getPage(pageNum);
+              const viewport = page.getViewport({ scale });
               
-              allPrices = [...allPrices, ...pagePrices];
-            } catch (textError) {
-              // Continue without text extraction if it fails
+              // Create canvas element
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d', { willReadFrequently: false });
+              if (!ctx) {
+                throw new Error(`Failed to get 2D context for page ${pageNum}`);
+              }
+
+              // Set canvas dimensions
+              canvas.height = viewport.height;
+              canvas.width = viewport.width;
+              
+              // Apply production-ready styling
+              canvas.style.maxWidth = '595px';
+              canvas.style.width = '595px';
+              canvas.style.height = 'auto';
+              canvas.style.display = 'block';
+              canvas.style.margin = '0 auto 16px auto';
+              canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+              canvas.style.border = '1px solid #e5e7eb';
+              canvas.style.backgroundColor = 'white';
+              canvas.style.borderRadius = '8px';
+              canvas.id = `pdf-page-${pageNum}`;
+
+              // Render with timeout protection
+              const renderContext = {
+                canvasContext: ctx,
+                viewport: viewport,
+              };
+
+              const renderPromise = page.render(renderContext).promise;
+              const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Render timeout')), 15000)
+              );
+
+              await Promise.race([renderPromise, timeoutPromise]);
+              
+              if (!isCancelled) {
+                container.appendChild(canvas);
+                newCanvases.push(canvas);
+
+                // Extract text content for processing
+                try {
+                  const textContent = await page.getTextContent();
+                  const textItems = textContent.items
+                    .filter((item): item is any => 'str' in item)
+                    .map((item: any) => item.str)
+                    .join(' ');
+
+                  allText += textItems + ' ';
+
+                  // Extract prices from this page
+                  const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
+                  const pagePrices = priceMatches.map((match, index) => ({
+                    value: parseFloat(match.replace(',', '.')),
+                    x: 450 + (index * 30),
+                    y: 650 - index * 25,
+                    pageIndex: pageNum - 1
+                  }));
+                  
+                  allPrices = [...allPrices, ...pagePrices];
+                } catch (textError) {
+                  console.warn(`Failed to extract text from page ${pageNum}:`, textError);
+                }
+              }
+            } catch (pageError) {
+              console.warn(`Failed to render page ${pageNum}:`, pageError);
+              
+              // Create fallback placeholder for failed page
+              if (!isCancelled) {
+                const placeholder = document.createElement('div');
+                placeholder.className = 'border border-dashed border-gray-300 bg-gray-50 mb-4 mx-auto block rounded-lg flex items-center justify-center';
+                placeholder.style.width = '595px';
+                placeholder.style.height = '842px'; // A4 dimensions
+                placeholder.innerHTML = `
+                  <div class="text-center text-gray-500">
+                    <p>Σελίδα ${pageNum}</p>
+                    <p class="text-sm">Σφάλμα φόρτωσης</p>
+                  </div>
+                `;
+                container.appendChild(placeholder);
+              }
             }
           }
+
+          if (!isCancelled) {
+            // Update tracking
+            canvasesRef.current = newCanvases;
+            lastRenderedRef.current = { pdfDoc, scale, numPages: pdfDoc.numPages };
+
+            // Call callbacks with extracted data
+            if (allText) {
+              stableOnTextExtracted(allText);
+            }
+            if (allPrices.length > 0) {
+              stableOnPricesDetected(allPrices);
+            }
+          }
+
+          return true;
+        } catch (error) {
+          console.error(`PDF rendering attempt ${renderAttempts + 1} failed:`, error);
+          return false;
         }
+      };
 
-        if (!isCancelled) {
-          // Update tracking
-          canvasesRef.current = newCanvases;
-          lastRenderedRef.current = { pdfDoc, scale, numPages: pdfDoc.numPages };
-
-          // Call callbacks with extracted data
-          if (allText) {
-            stableOnTextExtracted(allText);
-          }
-          if (allPrices.length > 0) {
-            stableOnPricesDetected(allPrices);
-          }
-
+      // Retry logic
+      while (renderAttempts < maxRetries && !isCancelled) {
+        const success = await attemptRender();
+        if (success) {
           stableOnRenderComplete(true);
+          renderingRef.current = false;
+          return;
         }
-      } catch (renderError) {
-        if (!isCancelled) {
-          stableOnRenderComplete(false);
+        renderAttempts++;
+        
+        if (renderAttempts < maxRetries) {
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
-      } finally {
-        renderingRef.current = false;
       }
+
+      // All attempts failed
+      if (!isCancelled) {
+        stableOnRenderComplete(false);
+      }
+      renderingRef.current = false;
     };
 
     renderPages();
