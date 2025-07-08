@@ -69,9 +69,12 @@ export const PDFBrowserFallback = ({ pdfUrl }: PDFBrowserFallbackProps) => {
   return (
     <Card className="w-full border shadow-sm">
       <iframe
-        src={pdfUrl}
+        src={`${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`}
         className="w-full h-[800px] border-0 rounded-lg"
-        style={{ minHeight: '600px' }}
+        style={{ 
+          minHeight: '600px',
+          overflow: 'hidden'
+        }}
         title="PDF Preview"
         onError={() => setEmbedSupported(false)}
       />
