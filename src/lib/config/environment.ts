@@ -1,21 +1,21 @@
-// Simplified Environment Configuration
-// Basic configuration without complex VITE dependencies
+// Environment Configuration Management
+// Integrates VITE environment variables for production optimization
 
 export const ENV_CONFIG = {
   // Application Environment
-  APP_ENV: 'production',
-  IS_PRODUCTION: true,
+  APP_ENV: import.meta.env.VITE_APP_ENV || 'development',
+  IS_PRODUCTION: import.meta.env.VITE_APP_ENV === 'production',
   
-  // PDF Processing Configuration - Simple defaults
-  PDF_WORKER_TIMEOUT: 10000,  // 10 seconds
-  MAX_FILE_SIZE: 52428800,    // 50MB
-  CHUNK_SIZE: 1048576,        // 1MB
-  ENABLE_GZIP: false,
+  // PDF Processing Configuration
+  PDF_WORKER_TIMEOUT: Number(import.meta.env.VITE_PDF_WORKER_TIMEOUT) || 30000,
+  MAX_FILE_SIZE: Number(import.meta.env.VITE_MAX_FILE_SIZE) || 52428800, // 50MB
+  CHUNK_SIZE: Number(import.meta.env.VITE_CHUNK_SIZE) || 1048576, // 1MB
+  ENABLE_GZIP: import.meta.env.VITE_ENABLE_GZIP === 'true',
   
   // Performance Settings
-  MAX_CONCURRENT_WORKERS: 1,  // Single worker to avoid conflicts
-  CACHE_ENABLED: false,       // Disable caching to avoid issues
-  PERFORMANCE_MONITORING: false
+  MAX_CONCURRENT_WORKERS: 2,
+  CACHE_ENABLED: true,
+  PERFORMANCE_MONITORING: true
 } as const;
 
 export const getFileProcessingConfig = () => ({

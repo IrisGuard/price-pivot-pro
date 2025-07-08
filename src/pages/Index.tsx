@@ -1,10 +1,10 @@
-import { SimpleSupplierTool } from "@/components/SimpleSupplierTool";
+import SupplierTool from "@/components/SupplierTool";
 
 const Index = () => {
   return (
     <div>
-      {/* ΦΑΣΗ 1: Σταθερό PDF Viewer - Πλήρης Λειτουργικότητα */}
-      <SimpleSupplierTool />
+      {/* Phase 1 Complete - Deploy Trigger v1.1 - Auto GitHub Actions */}
+      <SupplierTool />
     </div>
   );
 };

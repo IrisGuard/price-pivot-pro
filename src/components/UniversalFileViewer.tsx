@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { BrowserNativePDFViewer } from './pdf/BrowserNativePDFViewer';
+import { HybridPDFViewer } from './pdf/HybridPDFViewer';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -50,8 +50,7 @@ export const UniversalFileViewer = ({
         }
         setIsConverting(false);
       } else {
-        // For CSV and Excel files, pass them directly to the viewer
-        setConvertedPdfFile(file);
+        setConvertedPdfFile(null);
       }
     };
 
@@ -64,28 +63,24 @@ export const UniversalFileViewer = ({
         <div className="text-center text-muted-foreground">
           <FileText className="h-16 w-16 mx-auto mb-4 opacity-50" />
           <p className="text-lg">Δεν έχει επιλεχθεί αρχείο</p>
-          <p className="text-sm">Επιλέξτε ένα PDF, RTF, CSV ή Excel αρχείο για να ξεκινήσετε</p>
+          <p className="text-sm">Επιλέξτε ένα PDF ή RTF για να ξεκινήσετε</p>
         </div>
       </Card>
     );
   }
 
-  // Handle unsupported file types - Now support PDF, RTF, CSV, Excel
+  // Handle unsupported file types
   const fileExtension = file.name.toLowerCase().split('.').pop();
   const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
   const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
-  const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
-  const isExcel = fileExtension === 'xlsx' || fileExtension === 'xls' || file.type.includes('spreadsheet');
 
-  const isSupported = isPDF || isRTF || isCSV || isExcel;
-
-  if (!isSupported) {
+  if (!isPDF && !isRTF) {
     return (
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
         <div className="text-center">
           <AlertTriangle className="h-16 w-16 mx-auto mb-4 text-destructive" />
           <h3 className="text-lg font-semibold mb-2">Μη υποστηριζόμενος τύπος αρχείου</h3>
-          <p className="text-muted-foreground">Το σύστημα υποστηρίζει αρχεία: PDF, RTF, CSV, Excel</p>
+          <p className="text-muted-foreground">Το σύστημα υποστηρίζει μόνο αρχεία PDF και RTF</p>
         </div>
       </Card>
     );
@@ -119,8 +114,8 @@ export const UniversalFileViewer = ({
           </AlertDescription>
         </Alert>
       )}
-      <BrowserNativePDFViewer
-        file={convertedPdfFile}
+      <HybridPDFViewer
+        pdfFile={convertedPdfFile}
         onPricesDetected={onPricesDetected}
         onTextExtracted={onTextExtracted}
       />

@@ -1,17 +1,9 @@
 import { useState, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { getFileProcessingConfig } from '@/lib/config/environment';
+import { performanceMonitor, withPerformanceTracking } from '@/lib/performance/monitor';
 
-// Configure PDF.js worker with fallback
-if (typeof window !== 'undefined') {
-  try {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
-    console.log('PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-  } catch (error) {
-    console.warn('PDF.js worker configuration failed:', error);
-    // Fallback to CDN worker
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
-  }
-}
+// Worker is configured in main.tsx - no setup needed here
 
 export const usePDFLoader = (pdfFile: File | null) => {
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null);
@@ -27,63 +19,89 @@ export const usePDFLoader = (pdfFile: File | null) => {
       return;
     }
 
+    let loadingTask: any = null;
     let url: string | null = null;
-    let isCancelled = false;
 
-    const processFile = async () => {
+    const loadPDF = async () => {
       setLoading(true);
       setError(null);
       
+      const config = getFileProcessingConfig();
+      const operationId = `pdf-load-${Date.now()}`;
+      
       try {
-        // Create blob URL for fallback
+        // Create blob URL for fallback display
         url = URL.createObjectURL(pdfFile);
         setPdfUrl(url);
         
-        // File size validation
-        if (pdfFile.size > 50 * 1024 * 1024) { // 50MB
-          setError('Αρχείο πολύ μεγάλο (>50MB)');
-          setLoading(false);
-          return;
+        // Validate file size
+        if (pdfFile.size > config.maxFileSize) {
+          throw new Error(`File too large: ${Math.round(pdfFile.size / 1024 / 1024)}MB > ${Math.round(config.maxFileSize / 1024 / 1024)}MB`);
         }
         
-        // Load PDF with PDF.js
-        const arrayBuffer = await pdfFile.arrayBuffer();
-        const loadingTask = pdfjsLib.getDocument({
-          data: arrayBuffer,
-          cMapUrl: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@5.3.93/cmaps/',
-          cMapPacked: true,
-        });
-        
-        // Add timeout
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('PDF loading timeout')), 15000)
+        const result = await withPerformanceTracking(
+          operationId,
+          pdfFile.size,
+          async () => {
+            const arrayBuffer = await pdfFile.arrayBuffer();
+            
+            // Enhanced loading with timeout and retry strategies
+            const loadWithRetry = async (attempt = 1): Promise<pdfjsLib.PDFDocumentProxy> => {
+              try {
+                loadingTask = pdfjsLib.getDocument({ 
+                  data: arrayBuffer,
+                  verbosity: pdfjsLib.VerbosityLevel.ERRORS,
+                  disableAutoFetch: false,
+                  disableStream: false,
+                  useSystemFonts: true,
+                  standardFontDataUrl: '/fonts/',
+                  useWorkerFetch: false
+                });
+                
+                // Add timeout support
+                const timeoutPromise = new Promise<never>((_, reject) => {
+                  setTimeout(() => reject(new Error('PDF loading timeout')), config.timeout);
+                });
+                
+                const doc = await Promise.race([loadingTask.promise, timeoutPromise]);
+                
+                if (doc.numPages === 0) {
+                  throw new Error('PDF has no pages');
+                }
+                
+                return doc;
+              } catch (error) {
+                if (attempt < 3) {
+                  // Wait and retry with different config
+                  await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+                  return loadWithRetry(attempt + 1);
+                }
+                throw error;
+              }
+            };
+            
+            return await loadWithRetry();
+          }
         );
         
-        const pdfDocument = await Promise.race([
-          loadingTask.promise,
-          timeoutPromise
-        ]) as pdfjsLib.PDFDocumentProxy;
-        
-        if (!isCancelled) {
-          setPdfDoc(pdfDocument);
-          setLoading(false);
-          console.log('PDF loaded successfully:', pdfDocument.numPages, 'pages');
-        }
-        
+        setPdfDoc(result);
+        setError(null);
       } catch (error) {
-        console.warn('PDF.js loading failed, will use fallback:', error);
-        if (!isCancelled) {
-          setError('PDF.js loading failed, using fallback viewer');
-          setLoading(false);
-          // Keep pdfUrl for fallback browser native viewer
-        }
+        console.warn('PDF loading failed:', error);
+        setError(null); // Don't show error, just use fallback
+        setPdfDoc(null);
+      } finally {
+        setLoading(false);
       }
     };
 
-    processFile();
+    loadPDF();
     
     return () => {
-      isCancelled = true;
+      // Cleanup
+      if (loadingTask) {
+        loadingTask.destroy();
+      }
       if (url) {
         URL.revokeObjectURL(url);
       }

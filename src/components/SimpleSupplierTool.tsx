@@ -7,7 +7,7 @@ import { Upload, ZoomIn, ZoomOut } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { simplePDFProcessor } from "@/lib/pdf/simplePDFProcessor";
 import { useRTFToPDFConverter } from "@/hooks/useRTFToPDFConverter";
-import { HybridPDFViewer } from "@/components/pdf/HybridPDFViewer";
+import { EnhancedPDFViewer } from "@/components/EnhancedPDFViewer";
 import { RTFViewer } from "@/components/RTFViewer";
 
 export const SimpleSupplierTool = () => {
@@ -17,8 +17,6 @@ export const SimpleSupplierTool = () => {
   const [customerName, setCustomerName] = useState<string>("");
   const [customerAFM, setCustomerAFM] = useState<string>("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [detectedPrices, setDetectedPrices] = useState<Array<{ value: number; x: number; y: number; pageIndex: number }>>([]);
-  const [extractedText, setExtractedText] = useState<string>("");
   const { convertRTFToPDF } = useRTFToPDFConverter();
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,20 +57,10 @@ export const SimpleSupplierTool = () => {
   };
 
   const applyChanges = () => {
-    if (percentage && !isNaN(Number(percentage))) {
-      const numPercentage = Number(percentage);
-      const totalOriginal = detectedPrices.reduce((sum, p) => sum + p.value, 0);
-      const totalNew = totalOriginal * (1 + numPercentage / 100);
-      
+    if (percentage) {
       toast({
-        title: "✅ Ποσοστό εφαρμόστηκε",
-        description: `${numPercentage > 0 ? '+' : ''}${numPercentage}% στις τιμές (€${totalOriginal.toFixed(2)} → €${totalNew.toFixed(2)})`,
-      });
-    } else {
-      toast({
-        title: "Σφάλμα",
-        description: "Εισάγετε έγκυρο ποσοστό (π.χ. +10 ή -15)",
-        variant: "destructive"
+        title: "Ποσοστό εφαρμόστηκε",
+        description: `${percentage}% στις τιμές`,
       });
     }
   };
@@ -96,11 +84,6 @@ export const SimpleSupplierTool = () => {
     setIsProcessing(true);
     
     try {
-      toast({
-        title: "🔄 Δημιουργία PDF",
-        description: "Επεξεργασία τιμών και εξαγωγή...",
-      });
-
       let pdfBytes: Uint8Array;
       
       if (selectedFile.name.endsWith('.rtf')) {
@@ -109,20 +92,13 @@ export const SimpleSupplierTool = () => {
         pdfBytes = new Uint8Array(await selectedFile.arrayBuffer());
       }
 
-      // Apply percentage to detected prices if specified
-      let finalPercentage = 0;
-      if (percentage && !isNaN(Number(percentage))) {
-        finalPercentage = Number(percentage);
-      }
-
-      // Enhanced PDF processing with price adjustments
       const interactivePdfBytes = await simplePDFProcessor.processFactoryPDF(pdfBytes);
 
       const blob = new Blob([interactivePdfBytes], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `Προσφορά_${customerName || 'Πελάτης'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      link.download = `Προσφορά_${customerName || 'Πελάτης'}.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -130,14 +106,13 @@ export const SimpleSupplierTool = () => {
 
       toast({
         title: "✅ PDF έτοιμο",
-        description: `Προσφορά με ${detectedPrices.length} τιμές ${finalPercentage !== 0 ? `(${finalPercentage > 0 ? '+' : ''}${finalPercentage}%)` : ''}`,
+        description: "Η προσφορά δημιουργήθηκε",
       });
 
     } catch (error) {
-      console.error('Export error:', error);
       toast({
-        title: "Σφάλμα εξαγωγής",
-        description: "Παρακαλώ ελέγξτε το αρχείο και προσπαθήστε ξανά",
+        title: "Σφάλμα",
+        description: "Προσπαθήστε ξανά",
         variant: "destructive",
       });
     } finally {
@@ -179,21 +154,10 @@ export const SimpleSupplierTool = () => {
       {/* Full-Screen PDF Preview */}
       <div className="w-full">
         {selectedFile.name.endsWith('.pdf') ? (
-          <div className="w-full min-h-screen bg-muted/20">
-            <HybridPDFViewer 
-              pdfFile={selectedFile}
-              onTextExtracted={(text) => {
-                setExtractedText(text);
-                console.log('Text extracted:', text.slice(0, 100) + '...');
-              }}
-              onPricesDetected={(prices) => {
-                setDetectedPrices(prices);
-                console.log('Prices detected:', prices);
-                toast({
-                  title: "🎯 Τιμές ανιχνεύθηκαν",
-                  description: `Βρέθηκαν ${prices.length} τιμές στο PDF`,
-                });
-              }}
+          <div className="w-full min-h-screen">
+            <EnhancedPDFViewer 
+              file={selectedFile}
+              title={selectedFile.name}
             />
           </div>
         ) : (
@@ -237,9 +201,7 @@ export const SimpleSupplierTool = () => {
 
             {/* Price Control */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium">
-                Ποσοστό Τιμών {detectedPrices.length > 0 && `(${detectedPrices.length} τιμές)`}
-              </Label>
+              <Label className="text-sm font-medium">Ποσοστό Τιμών</Label>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -252,12 +214,6 @@ export const SimpleSupplierTool = () => {
                   Εφαρμογή
                 </Button>
               </div>
-              {detectedPrices.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Τιμές: {detectedPrices.slice(0, 3).map(p => `€${p.value.toFixed(2)}`).join(', ')}
-                  {detectedPrices.length > 3 && '...'}
-                </p>
-              )}
             </div>
 
             {/* Customer Details */}
