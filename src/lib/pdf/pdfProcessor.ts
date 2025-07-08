@@ -1,23 +1,107 @@
-import { PDFDocument, PDFForm } from 'pdf-lib';
+import { PDFDocument, PDFForm, PDFImage, rgb } from 'pdf-lib';
 import type { InteractivePDFOptions } from './types';
-import { PDFSecurityHandler } from './pdfSecurity';
-import { PDFPriceProcessor } from './pdfPriceProcessor';
-import { PDFBannerProcessor } from './pdfBannerProcessor';
-import { PDFFormCreator } from './pdfFormCreator';
-import { PDFJavaScriptEngine } from './pdfJavaScriptEngine';
 
 export class InteractivePDFProcessor {
   private pdfDoc: PDFDocument | null = null;
   private form: PDFForm | null = null;
-  
-  private securityHandler = new PDFSecurityHandler();
-  private priceProcessor = new PDFPriceProcessor(this.securityHandler.getSecurityHash());
-  private bannerProcessor = new PDFBannerProcessor();
-  private formCreator = new PDFFormCreator();
-  private jsEngine = new PDFJavaScriptEngine(
-    this.securityHandler.getSecuritySignature(),
-    this.securityHandler.getSecurityHash()
-  );
+
+  private async replaceBanner(pdfDoc: PDFDocument, bannerImageBytes: Uint8Array): Promise<void> {
+    try {
+      const pages = pdfDoc.getPages();
+      const firstPage = pages[0];
+      const { width, height } = firstPage.getSize();
+      
+      // Clear existing banner area
+      const bannerClearHeight = 150;
+      firstPage.drawRectangle({
+        x: 0,
+        y: height - bannerClearHeight,
+        width: width,
+        height: bannerClearHeight,
+        color: rgb(1, 1, 1)
+      });
+      
+      // Determine image format and embed new banner
+      let bannerImage: PDFImage;
+      const imageHeader = Array.from(bannerImageBytes.slice(0, 4));
+      
+      if (imageHeader[0] === 0xFF && imageHeader[1] === 0xD8) {
+        bannerImage = await pdfDoc.embedJpg(bannerImageBytes);
+      } else if (imageHeader[0] === 0x89 && imageHeader[1] === 0x50) {
+        bannerImage = await pdfDoc.embedPng(bannerImageBytes);
+      } else {
+        console.warn('Unsupported image format for banner');
+        return;
+      }
+      
+      // Place new banner
+      const bannerWidth = width;
+      const bannerHeight = Math.min(120, height * 0.15);
+      const imageAspectRatio = bannerImage.width / bannerImage.height;
+      let drawWidth = bannerWidth;
+      let drawHeight = bannerWidth / imageAspectRatio;
+      
+      if (drawHeight > bannerHeight) {
+        drawHeight = bannerHeight;
+        drawWidth = drawHeight * imageAspectRatio;
+      }
+      
+      const x = (width - drawWidth) / 2;
+      const y = height - drawHeight - 20;
+      
+      firstPage.drawImage(bannerImage, {
+        x, y, width: drawWidth, height: drawHeight,
+      });
+    } catch (error) {
+      console.warn('Banner replacement failed:', error);
+    }
+  }
+
+  private async addInteractiveControls(pdfDoc: PDFDocument): Promise<void> {
+    try {
+      const pages = pdfDoc.getPages();
+      const controlPage = pdfDoc.addPage([595, 842]); // A4 size
+      
+      // Add control panel background
+      controlPage.drawRectangle({
+        x: 20,
+        y: 20,
+        width: 555,
+        height: 802,
+        color: rgb(0.95, 0.95, 0.95),
+        borderColor: rgb(0.7, 0.7, 0.7),
+        borderWidth: 2
+      });
+      
+      // Add title
+      controlPage.drawText('🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ', {
+        x: 50,
+        y: 780,
+        size: 20,
+        color: rgb(0, 0, 0)
+      });
+      
+      // Add instructions
+      const instructions = [
+        '💰 1. ΑΛΛΑΓΗ ΠΟΣΟΣΤΟΥ ΤΙΜΩΝ',
+        '🖼️ 2. ΑΛΛΑΓΗ BANNER/ΛΟΓΟΤΥΠΟΥ', 
+        '👤 3. ΣΤΟΙΧΕΙΑ ΠΕΛΑΤΗ',
+        '📄 4. ΕΞΑΓΩΓΗ ΤΕΛΙΚΟΥ PDF'
+      ];
+      
+      instructions.forEach((instruction, index) => {
+        controlPage.drawText(instruction, {
+          x: 50,
+          y: 720 - (index * 40),
+          size: 14,
+          color: rgb(0.2, 0.2, 0.2)
+        });
+      });
+      
+    } catch (error) {
+      console.warn('Control panel creation failed:', error);
+    }
+  }
 
   async createSealedQuotationPDF(options: InteractivePDFOptions): Promise<Uint8Array> {
     const { factoryPdfBytes, percentage = 0 } = options;
@@ -39,27 +123,13 @@ export class InteractivePDFProcessor {
       this.pdfDoc = await PDFDocument.load(factoryPdfBytes);
       this.form = this.pdfDoc.getForm();
 
-      // Add security signature for authentication
-      await this.securityHandler.addSecuritySignature(this.pdfDoc);
-      
-      // Apply initial price adjustment and extract price coordinates
-      await this.priceProcessor.processPricesWithCoordinates(
-        this.pdfDoc, 
-        percentage, 
-        this.securityHandler.getSecuritySignature()
-      );
-      
       // Replace banner with supplier's banner (if available)
       if (bannerImageBytes) {
-        await this.bannerProcessor.replaceBanner(this.pdfDoc, bannerImageBytes);
+        await this.replaceBanner(this.pdfDoc, bannerImageBytes);
       }
       
-      // Create embedded interactive control panel
-      await this.formCreator.createEmbeddedControlPanel(this.pdfDoc, this.form);
-      
-      // Add comprehensive JavaScript engine with detected prices
-      const priceCoordinates = await this.priceProcessor.getDetectedPrices();
-      await this.jsEngine.addAdvancedJavaScriptEngine(this.pdfDoc, priceCoordinates);
+      // Add interactive control panel
+      await this.addInteractiveControls(this.pdfDoc);
       
       const pdfBytes = await this.pdfDoc.save();
       console.log('✅ Sealed PDF created successfully:', pdfBytes.length, 'bytes');

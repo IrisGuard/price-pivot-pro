@@ -104,28 +104,52 @@ export const ProfessionalControlPanel = ({
     
     if (pdfFile) {
       try {
-        const pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
-        const cleanPdfBytes = await cleanPDFExporter.createCleanPDF(pdfBytes, {
-          removeControlPanels: true,
-          applyCustomerData: true,
-          customerData
+        toast({
+          title: "🔄 Δημιουργία PDF",
+          description: "Προετοιμασία σφραγισμένου PDF με όλες τις παραμέτρους...",
+        });
+
+        // Import the PDF processor
+        const { interactivePDFProcessor } = await import("@/lib/pdf/pdfProcessor");
+        
+        // Get file as bytes
+        const factoryPdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
+        
+        // Create sealed PDF with customer data and settings
+        const sealedPdfBytes = await interactivePDFProcessor.createSealedQuotationPDF({
+          factoryPdfBytes,
+          percentage: parseFloat(percentage) || 0,
         });
         
-        await cleanPDFExporter.downloadCleanPDF(cleanPdfBytes);
+        // Download the file
+        const blob = new Blob([sealedPdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `Προσφορά_${customerData.name || 'Πελάτης'}_${Date.now()}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
         
         toast({
-          title: "PDF Εξαγωγή",
-          description: "Το καθαρό PDF εξήχθη επιτυχώς",
+          title: "✅ PDF Ετοιμο",
+          description: `Το σφραγισμένο PDF (${(sealedPdfBytes.length / 1024).toFixed(1)} KB) εξήχθη επιτυχώς`,
         });
       } catch (error) {
+        console.error('PDF Export Error:', error);
         toast({
-          title: "Σφάλμα",
-          description: "Σφάλμα κατά την εξαγωγή του PDF",
+          title: "❌ Σφάλμα",
+          description: "Σφάλμα κατά την εξαγωγή του PDF. Δοκιμάστε ξανά.",
           variant: "destructive",
         });
       }
     } else {
-      window.print();
+      toast({
+        title: "Σφάλμα",
+        description: "Δεν υπάρχει αρχείο για εξαγωγή",
+        variant: "destructive",
+      });
     }
   };
 
