@@ -73,15 +73,21 @@ export const HybridPDFViewer = ({
 
       {/* Professional A4 Document Layout */}
       <div className="flex flex-col items-center">
-        {/* Enhanced Loading State with Timeout Protection */}
+        {/* Enhanced Loading State with Recovery Options */}
         {loading && !forceNativeFallback && (
           <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '400px' }}>
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-4 p-8">
                 <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <p className="text-lg font-medium text-foreground">Φόρτωση PDF...</p>
-                  <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε (μέγιστο 6 δευτερόλεπτα)</p>
+                  <p className="text-sm text-muted-foreground">Μέγιστο 8 δευτερόλεπτα</p>
+                  <button 
+                    onClick={() => setForceNativeFallback(true)}
+                    className="px-4 py-2 bg-muted text-muted-foreground rounded-md hover:bg-muted/80 text-sm"
+                  >
+                    🔄 Χρήση εναλλακτικής προβολής
+                  </button>
                 </div>
               </div>
             </div>

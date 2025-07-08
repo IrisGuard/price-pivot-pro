@@ -61,11 +61,6 @@ export const UniversalFileProcessor = ({
     setIsProcessing(true);
     setProcessingResult(null);
 
-    // Production timeout - 20 seconds for large files
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Αρχείο δεν φορτώνει - δοκιμάστε διαφορετικό αρχείο')), 20000);
-    });
-
     try {
       const fileExtension = file.name.toLowerCase().split('.').pop();
       const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
@@ -73,7 +68,7 @@ export const UniversalFileProcessor = ({
       const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
       const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
 
-      console.log('🔍 Processing file:', file.name, 'Type:', file.type, 'Extension:', fileExtension);
+      console.log('🔍 Processing file:', file.name, 'Type:', file.type);
 
       // Immediate rejection for unsupported files
       if (!isPDF && !isRTF && !isCSV && !isExcel) {
@@ -86,71 +81,50 @@ export const UniversalFileProcessor = ({
         return;
       }
 
-      await Promise.race([
-        (async () => {
-          if (isPDF) {
-            console.log('📄 Processing PDF file...');
-            // Process PDF normally
-            setProcessingResult({ type: 'pdf', content: file });
-            
-            // Extract emails from PDF text if available
-            try {
-              const text = await extractTextFromPDF(file);
-              if (text && onEmailsDetected) {
-                const emailExtractor = new EmailExtractor();
-                const emailResult = emailExtractor.extractFromPDF(text);
-                onEmailsDetected(emailResult.emails);
-              }
-            } catch (err) {
-              console.warn('Email extraction failed:', err);
-            }
-            
-          } else if (isRTF) {
-            console.log('📝 Converting RTF to PDF...');
-            // Convert RTF to PDF with timeout protection
-            const pdfBytes = await convertRTFToPDF(file);
-            const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-            const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-              type: 'application/pdf'
-            });
-            
-            setProcessingResult({ type: 'rtf', content: pdfFile });
-            
-            toast({
-              title: "✅ RTF επεξεργασία",
-              description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
-            });
-            
-          } else if (isCSV || isExcel) {
-            console.log('📊 Processing spreadsheet file...');
-            // Process CSV/Excel files
-            const csvProcessor = new CSVProcessor();
-            const result = await csvProcessor.processCSVFile(file);
-            
-            setProcessingResult({ 
-              type: isCSV ? 'csv' : 'excel', 
-              contacts: result.contacts,
-              emails: result.emails
-            });
-            
-            // Notify parent components
-            if (onContactsDetected) onContactsDetected(result.contacts);
-            if (onEmailsDetected) onEmailsDetected(result.emails);
-            
-            toast({
-              title: `✅ ${isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
-              description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
-            });
-          }
-        })(),
-        timeoutPromise
-      ]);
-      
-      console.log('✅ File processing completed successfully');
+      // Parallel processing with independent timeouts
+      if (isPDF) {
+        console.log('📄 Processing PDF file...');
+        setProcessingResult({ type: 'pdf', content: file });
+        
+      } else if (isRTF) {
+        console.log('📝 Converting RTF to PDF...');
+        const pdfBytes = await convertRTFToPDF(file);
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
+          type: 'application/pdf'
+        });
+        
+        setProcessingResult({ type: 'rtf', content: pdfFile });
+        
+        toast({
+          title: "✅ RTF επεξεργασία",
+          description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
+        });
+        
+      } else if (isCSV || isExcel) {
+        console.log('📊 Processing spreadsheet file...');
+        const csvProcessor = new CSVProcessor();
+        const result = await csvProcessor.processCSVFile(file);
+        
+        setProcessingResult({ 
+          type: isCSV ? 'csv' : 'excel', 
+          contacts: result.contacts,
+          emails: result.emails
+        });
+        
+        // Notify parent components
+        if (onContactsDetected) onContactsDetected(result.contacts);
+        if (onEmailsDetected) onEmailsDetected(result.emails);
+        
+        toast({
+          title: `✅ ${isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
+          description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
+        });
+      }
       
     } catch (error) {
       console.error('❌ File processing error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Άγνωστο σφάλμα επεξεργασίας';
+      const errorMessage = error instanceof Error ? error.message : 'Σφάλμα επεξεργασίας αρχείου';
       setProcessingResult({ type: 'pdf', error: errorMessage });
       
       toast({
@@ -159,7 +133,6 @@ export const UniversalFileProcessor = ({
         variant: "destructive",
       });
     } finally {
-      console.log('🔄 Resetting processing state');
       setIsProcessing(false);
     }
   };
@@ -201,9 +174,29 @@ export const UniversalFileProcessor = ({
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
         <div className="text-center space-y-4">
           <AlertTriangle className="h-16 w-16 mx-auto text-destructive" />
-          <div className="space-y-2">
+          <div className="space-y-4">
             <h3 className="text-lg font-semibold">Σφάλμα επεξεργασίας</h3>
             <p className="text-muted-foreground max-w-md">{processingResult.error}</p>
+            <div className="space-y-2">
+              <button 
+                onClick={() => {
+                  setProcessingResult(null);
+                  processFile();
+                }}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+              >
+                🔄 Δοκιμή ξανά
+              </button>
+              <button 
+                onClick={() => {
+                  setProcessingResult(null);
+                  window.location.reload();
+                }}
+                className="px-4 py-2 bg-muted text-muted-foreground rounded-md hover:bg-muted/80 ml-2"
+              >
+                📁 Διαφορετικό αρχείο
+              </button>
+            </div>
           </div>
         </div>
       </Card>

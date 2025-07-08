@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
-import { getFileProcessingConfig } from '@/lib/config/environment';
-import { performanceMonitor, withPerformanceTracking } from '@/lib/performance/monitor';
 
 // Worker is configured in main.tsx - no setup needed here
 
@@ -26,52 +24,44 @@ export const usePDFLoader = (pdfFile: File | null) => {
       setLoading(true);
       setError(null);
       
-      const config = getFileProcessingConfig();
-      const operationId = `pdf-load-${Date.now()}`;
-      
       try {
         // Create blob URL for fallback display
         url = URL.createObjectURL(pdfFile);
         setPdfUrl(url);
         
-        // Validate file size
-        if (pdfFile.size > config.maxFileSize) {
-          throw new Error(`File too large: ${Math.round(pdfFile.size / 1024 / 1024)}MB > ${Math.round(config.maxFileSize / 1024 / 1024)}MB`);
+        // Validate file size (max 30MB)
+        if (pdfFile.size > 30 * 1024 * 1024) {
+          throw new Error(`Αρχείο πολύ μεγάλο: ${Math.round(pdfFile.size / 1024 / 1024)}MB > 30MB`);
         }
         
-        // Production timeout - 15 seconds for reliable loading
+        // Fast timeout - 8 seconds with immediate fallback
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('PDF φόρτωση timeout - παρακαλώ δοκιμάστε ξανά')), 15000);
+          setTimeout(() => reject(new Error('PDF φόρτωση timeout - χρήση εναλλακτικής προβολής')), 8000);
         });
 
-        const result = await Promise.race([
-          withPerformanceTracking(
-            operationId,
-            pdfFile.size,
-            async () => {
-              const arrayBuffer = await pdfFile.arrayBuffer();
-              
-              loadingTask = pdfjsLib.getDocument({ 
-                data: arrayBuffer,
-                verbosity: pdfjsLib.VerbosityLevel.ERRORS,
-                disableAutoFetch: true,
-                disableStream: true,
-                useSystemFonts: true,
-                useWorkerFetch: false,
-                stopAtErrors: false
-              });
-              
-              const doc = await loadingTask.promise;
-              
-              if (doc.numPages === 0) {
-                throw new Error('PDF has no pages');
-              }
-              
-              return doc;
-            }
-          ),
-          timeoutPromise
-        ]);
+        const pdfPromise = async () => {
+          const arrayBuffer = await pdfFile.arrayBuffer();
+          
+          loadingTask = pdfjsLib.getDocument({ 
+            data: arrayBuffer,
+            verbosity: pdfjsLib.VerbosityLevel.ERRORS,
+            disableAutoFetch: true,
+            disableStream: true,
+            useSystemFonts: true,
+            useWorkerFetch: false,
+            stopAtErrors: false
+          });
+          
+          const doc = await loadingTask.promise;
+          
+          if (doc.numPages === 0) {
+            throw new Error('PDF δεν έχει σελίδες');
+          }
+          
+          return doc;
+        };
+
+        const result = await Promise.race([pdfPromise(), timeoutPromise]);
         
         setPdfDoc(result);
         setError(null);

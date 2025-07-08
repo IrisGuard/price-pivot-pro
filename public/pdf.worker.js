@@ -7,46 +7,52 @@ self.postMessage({
   timestamp: Date.now()
 });
 
-// Enhanced PDF.js worker loading with multiple fallbacks
+// Fast PDF.js worker loading with immediate fallback
 (function loadPDFWorker() {
   const sources = [
     'https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.js',
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js',
-    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.js'
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.js'
   ];
   
   let loaded = false;
+  let attempts = 0;
   
-  for (const src of sources) {
-    if (loaded) break;
+  function tryLoad() {
+    if (loaded || attempts >= sources.length) {
+      if (!loaded) {
+        console.warn('❌ PDF Worker: Using minimal fallback');
+        self.onmessage = function(e) {
+          self.postMessage({ type: 'error', message: 'Worker failed' });
+        };
+      }
+      return;
+    }
+    
+    const src = sources[attempts++];
+    
+    // 3-second timeout per source
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ PDF Worker: Timeout loading', src);
+      tryLoad();
+    }, 3000);
     
     try {
       importScripts(src);
+      clearTimeout(timeoutId);
       console.log('✅ PDF Worker: Loaded from', src);
       loaded = true;
       
-      // Override message handler for production
       self.onmessage = function(e) {
-        // Handle PDF.js worker messages normally
         if (e.data && e.data.type) {
           console.log('📨 PDF Worker: Processing', e.data.type);
         }
       };
-      
-      break;
     } catch (error) {
+      clearTimeout(timeoutId);
       console.warn('⚠️ PDF Worker: Failed', src, error.message);
+      tryLoad();
     }
   }
   
-  if (!loaded) {
-    console.error('❌ PDF Worker: All sources failed - using basic fallback');
-    self.onmessage = function(e) {
-      self.postMessage({
-        type: 'error',
-        message: 'PDF Worker fallback active',
-        timestamp: Date.now()
-      });
-    };
-  }
+  tryLoad();
 })();
