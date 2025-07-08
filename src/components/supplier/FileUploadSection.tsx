@@ -11,40 +11,26 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
-    console.log('🔥 FILE SELECTED!');
-    console.log('📁 File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type,
-    });
-    
     // Validate file type
     const validTypes = ['.pdf', '.rtf'];
     const isValidType = validTypes.some(type => file.name.toLowerCase().endsWith(type));
     
     if (!isValidType) {
-      console.error('❌ Invalid file type:', file.type);
       alert('Παρακαλώ επιλέξτε αρχείο PDF ή RTF');
       return;
     }
     
-    console.log('✅ CALLING onFileChange NOW');
     onFileChange(file);
   };
 
   const handleButtonClick = () => {
-    console.log('🔘 BUTTON CLICKED - Triggering file input');
     fileInputRef.current?.click();
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log('🔥 FILE INPUT CHANGE FIRED!');
     const files = e.target.files;
     if (files && files.length > 0) {
-      console.log('📁 File found:', files[0].name);
       handleFileSelect(files[0]);
-    } else {
-      console.log('❌ No files selected');
     }
     // Reset input value for re-selection
     e.target.value = '';
@@ -52,11 +38,9 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
-    console.log('🔥 FILE DROPPED!');
     
     const files = e.dataTransfer.files;
     if (files.length > 0) {
-      console.log('📁 Processing dropped file:', files[0].name);
       handleFileSelect(files[0]);
     }
   };

@@ -8,7 +8,7 @@ import { usePriceExtraction } from '@/hooks/usePriceExtraction';
 import { usePDFRendering } from '@/hooks/usePDFRendering';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
 import { PDFCanvasContainer } from '@/components/pdf/PDFCanvasContainer';
-import { PDFPageWithControls } from '@/components/pdf/PDFPageWithControls';
+import { CleanPDFViewer } from '@/components/pdf/CleanPDFViewer';
 
 // Initialize PDF.js worker
 const { setupPDFWorker } = usePDFWorkerSetup();
@@ -33,12 +33,9 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
 
   useEffect(() => {
     if (!pdfFile) {
-      console.log('🔄 PDF VIEWER: No PDF file provided');
       setPdfUrl(null);
       return;
     }
-
-    console.log('🔄 PDF VIEWER: Starting PDF load for:', pdfFile.name);
 
     const loadPDF = async () => {
       setLoading(true);
@@ -47,12 +44,9 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
       // Create blob URL for immediate fallback display
       const url = URL.createObjectURL(pdfFile);
       setPdfUrl(url);
-      console.log('✅ Blob URL created for immediate preview');
       
       try {
-        console.log('🔄 Loading PDF with PDF.js...');
         const arrayBuffer = await pdfFile.arrayBuffer();
-        console.log('📄 PDF arrayBuffer size:', arrayBuffer.byteLength);
         
         // Simplified, reliable PDF.js configuration
         const loadingTask = pdfjsLib.getDocument({ 
@@ -61,7 +55,6 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         });
         
         const doc = await loadingTask.promise;
-        console.log('✅ PDF loaded successfully, pages:', doc.numPages);
         
         if (doc.numPages === 0) {
           throw new Error('PDF has no pages');
@@ -70,7 +63,6 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         setPdfDoc(doc);
         setError(null);
       } catch (error) {
-        console.error('❌ PDF.js loading failed:', error);
         // Keep the PDF URL for browser fallback but don't set error
         setPdfDoc(null);
       }
@@ -96,7 +88,7 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
       }).then(pages => {
         setRenderedPages(pages);
       }).catch(error => {
-        console.error('Error rendering pages:', error);
+        // Silent error handling
       });
     }
   }, [pdfDoc, scale, renderAllPages, onTextExtracted, onPricesDetected]);
@@ -110,7 +102,6 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
   }, [scale]);
 
   if (!pdfFile) {
-    console.log('🔍 PDF VIEWER: No PDF file - showing empty state');
     return (
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
         <div className="text-center text-muted-foreground">
@@ -138,107 +129,24 @@ export const PDFViewer = ({ pdfFile, onTextExtracted, onPricesDetected }: PDFVie
         pdfDoc={pdfDoc}
       />
       
-      {/* Control Page at the end */}
+      {/* Clean Control Page at the end */}
       {renderedPages.length > 0 && (
-        <div className="bg-white border shadow-sm mx-auto block mb-4 p-8" style={{ width: (renderedPages[0]?.width || 595) + 'px', minHeight: '842px' }}>
-          <div className="text-center space-y-6">
-            <h1 className="text-2xl font-bold text-blue-700 mb-8">🔧 ΠΑΝΕΛ ΕΛΕΓΧΟΥ ΠΡΟΣΦΟΡΑΣ</h1>
-            
-            <div className="space-y-6">
-              <div className="bg-gray-50 p-4 rounded border">
-                <h3 className="font-bold text-lg mb-3">1. ΑΛΛΑΓΗ ΠΟΣΟΣΤΟΥ ΤΙΜΩΝ</h3>
-                <div className="flex items-center justify-center gap-3">
-                  <input 
-                    type="number" 
-                    placeholder="+10 ή -15" 
-                    className="border px-3 py-2 w-24 text-center" 
-                    id="percentageInput"
-                  />
-                  <button 
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                     onClick={() => {
-                       const input = document.querySelector('#percentageInput') as HTMLInputElement;
-                       const percentage = parseFloat(input.value);
-                       if (!isNaN(percentage)) {
-                         console.log('Applying percentage:', percentage);
-                         alert(`✅ Εφαρμογή ποσοστού: ${percentage}% - Ολες οι τιμές ενημερώθηκαν`);
-                       } else {
-                         alert('❌ Παρακαλώ εισάγετε έγκυρο αριθμό');
-                       }
-                     }}
-                  >
-                    ΕΦΑΡΜΟΓΗ
-                  </button>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 p-4 rounded border">
-                <h3 className="font-bold text-lg mb-3">2. ΑΛΛΑΓΗ BANNER/ΛΟΓΟΤΥΠΟΥ</h3>
-                <div className="flex items-center justify-center gap-3">
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    id="bannerInput"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        alert(`Νέο banner: ${file.name}`);
-                      }
-                    }}
-                  />
-                  <button 
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                     onClick={() => {
-                       const input = document.createElement('input');
-                       input.type = 'file';
-                       input.accept = 'image/*';
-                       input.onchange = (e) => {
-                         const file = (e.target as HTMLInputElement).files?.[0];
-                         if (file) {
-                           console.log('Banner selected:', file.name);
-                           alert(`✅ Νέο banner επιλέχθηκε: ${file.name}`);
-                         }
-                       };
-                       input.click();
-                     }}
-                  >
-                    ΑΛΛΑΓΗ BANNER
-                  </button>
-                  <button 
-                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                     onClick={() => {
-                       console.log('Removing banner');
-                       alert('✅ Banner αφαιρέθηκε επιτυχώς');
-                     }}
-                  >
-                    ΑΦΑΙΡΕΣΗ BANNER
-                  </button>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 p-4 rounded border">
-                <h3 className="font-bold text-lg mb-3">3. ΣΥΜΠΛΗΡΩΣΗ ΣΤΟΙΧΕΙΩΝ ΠΕΛΑΤΗ</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <input type="text" placeholder="Ονοματεπώνυμο" className="border px-3 py-2" id="customerName" />
-                  <input type="text" placeholder="Επάγγελμα" className="border px-3 py-2" id="customerJob" />
-                  <input type="text" placeholder="ΑΦΜ" className="border px-3 py-2" id="customerTax" />
-                  <input type="text" placeholder="Τηλέφωνο" className="border px-3 py-2" id="customerPhone" />
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-yellow-50 p-4 rounded border border-yellow-300 text-left">
-              <h4 className="font-bold text-yellow-800 mb-2">ΟΔΗΓΙΕΣ ΧΡΗΣΗΣ:</h4>
-              <ul className="text-sm text-yellow-700 space-y-1">
-                <li>• Για αλλαγή τιμών: Εισάγετε ποσοστό (π.χ. +10, -15) και πατήστε "ΕΦΑΡΜΟΓΗ"</li>
-                <li>• Για αλλαγή banner: Πατήστε "ΑΛΛΑΓΗ BANNER" και επιλέξτε εικόνα</li>
-                <li>• Συμπληρώστε τα στοιχεία σας στα αντίστοιχα πεδία</li>
-                <li>• Μετά τις αλλαγές, χρησιμοποιήστε Ctrl+P για εκτύπωση</li>
-              </ul>
-            </div>
-          </div>
-        </div>
+        <CleanPDFViewer 
+          pageWidth={renderedPages[0]?.width || 595}
+          isAdminMode={true}
+          onPercentageChange={(percentage) => {
+            // TODO: Implement actual price modification
+          }}
+          onBannerChange={(file) => {
+            // TODO: Implement banner replacement
+          }}
+          onCustomerDataChange={(data) => {
+            // TODO: Store customer data
+          }}
+          onExportCleanPDF={() => {
+            window.print();
+          }}
+        />
       )}
     </Card>
   );

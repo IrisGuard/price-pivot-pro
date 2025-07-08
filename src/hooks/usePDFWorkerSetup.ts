@@ -1,13 +1,10 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// ROBUST PDF.js WORKER SETUP WITH FALLBACKS
+// PRODUCTION PDF.js WORKER SETUP
 export const usePDFWorkerSetup = () => {
   const setupPDFWorker = () => {
-    console.log('🔧 Setting up PDF.js worker...');
-    
-    // Use local worker file for reliability
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
-    console.log('✅ PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
+    // Use CDN worker for maximum compatibility
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@5.3.93/build/pdf.worker.min.js';
   };
 
   return { setupPDFWorker };

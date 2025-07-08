@@ -20,37 +20,24 @@ export const useSupplierTool = () => {
   const { createInteractivePDF } = usePDFProcessor();
 
   const handleFactoryFileChange = (file: File | null) => {
-    console.log('🔄 HOOK: handleFactoryFileChange called with:', file?.name, 'Size:', file?.size);
-    
     if (!file) {
-      console.log('❌ HOOK: No file provided, clearing state');
       setFactoryFile(null);
       return;
     }
-    
-    console.log('✅ HOOK: Valid file received, updating state...');
-    console.log('📋 HOOK: File details - Name:', file.name, 'Type:', file.type, 'Size:', file.size);
     
     // Clear previous state
     setShowEditor(false);
     setDetectedPrices([]);
     setCurrentPrices([]);
     
-    // Set the new file with force update
+    // Set the new file
     setFactoryFile(file);
-    console.log('✅ HOOK: State updated successfully, preview should render now');
-    console.log('📊 HOOK: Current factoryFile state will be:', file.name);
     
     // Add toast notification for successful file load
     toast({
       title: "✅ Αρχείο φορτώθηκε επιτυχώς",
       description: `${file.name} (${(file.size / 1024).toFixed(1)} KB)`,
     });
-    
-    // Add a small delay to ensure state is updated
-    setTimeout(() => {
-      console.log('🔍 HOOK: Delayed check - factoryFile should be set now');
-    }, 100);
   };
 
   const handlePricesDetected = (prices: PriceData[]) => {

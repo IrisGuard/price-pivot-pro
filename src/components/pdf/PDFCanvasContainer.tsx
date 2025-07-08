@@ -93,7 +93,6 @@ export const PDFCanvasContainer = ({
                           const input = document.querySelector('#fallbackPercentageInput') as HTMLInputElement;
                           const percentage = parseFloat(input.value);
                           if (!isNaN(percentage)) {
-                            console.log('✅ Percentage applied:', percentage);
                             alert(`✅ Εφαρμογή ποσοστού: ${percentage}% - Όλες οι τιμές ενημερώθηκαν`);
                           } else {
                             alert('❌ Παρακαλώ εισάγετε έγκυρο αριθμό');
@@ -117,7 +116,6 @@ export const PDFCanvasContainer = ({
                           input.onchange = (e) => {
                             const file = (e.target as HTMLInputElement).files?.[0];
                             if (file) {
-                              console.log('✅ Banner selected:', file.name);
                               alert(`✅ Νέο banner επιλέχθηκε: ${file.name}`);
                             }
                           };
@@ -128,8 +126,7 @@ export const PDFCanvasContainer = ({
                       </button>
                       <button 
                         className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                        onClick={() => {
-                          console.log('✅ Banner removed');
+                         onClick={() => {
                           alert('✅ Banner αφαιρέθηκε επιτυχώς');
                         }}
                       >
