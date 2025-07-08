@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { PDFViewer } from './PDFViewer';
+import { ProfessionalPDFViewer } from './pdf/ProfessionalPDFViewer';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
 
 interface PriceData {
@@ -74,9 +74,9 @@ export const UniversalFileViewer = ({
     );
   }
 
-  // Always use PDF viewer for consistency and control page support
+  // Always use Professional PDF viewer for consistency and control page support
   return (
-    <PDFViewer
+    <ProfessionalPDFViewer
       pdfFile={convertedPdfFile}
       onPricesDetected={onPricesDetected}
       onTextExtracted={onTextExtracted}
