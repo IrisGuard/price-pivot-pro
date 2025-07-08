@@ -7,9 +7,9 @@ export const useRTFToPDFConverter = () => {
       return new Uint8Array(await file.arrayBuffer());
     }
 
-    // Immediate 3-second timeout for RTF processing
+    // 10-second timeout for RTF processing
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('RTF processing timeout')), 3000);
+      setTimeout(() => reject(new Error('RTF processing timeout')), 10000);
     });
 
     try {

@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react';
 import { HybridPDFViewer } from './pdf/HybridPDFViewer';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
 import { CSVProcessor } from '@/lib/csv/csvProcessor';
-import { EmailExtractor } from '@/lib/email/emailExtractor';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle, FileText, Mail, Users, FileSpreadsheet } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { AlertTriangle, FileText, Mail, Users, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { OptimizedFileLoader } from '@/components/shared/OptimizedFileLoader';
 
 interface PriceData {
   value: number;
@@ -44,7 +43,8 @@ export const UniversalFileProcessor = ({
 }: UniversalFileProcessorProps) => {
   const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [showOptimizedLoader, setShowOptimizedLoader] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [stage, setStage] = useState('');
   const { convertRTFToPDF } = useRTFToPDFConverter();
   const { toast } = useToast();
 
@@ -77,33 +77,70 @@ export const UniversalFileProcessor = ({
       return;
     }
 
-    // For larger files or complex processing, show optimized loader
-    if (file.size > 2 * 1024 * 1024 || isRTF) { // 2MB+ or RTF files
-      setShowOptimizedLoader(true);
-      return;
-    }
-
-    // Fast path for smaller files
     setIsProcessing(true);
     setProcessingResult(null);
+    setProgress(0);
 
     try {
       console.log('🔍 Processing file:', file.name, 'Type:', file.type);
 
       if (isPDF) {
-        console.log('📄 Processing PDF file...');
+        setStage('Φόρτωση PDF...');
+        setProgress(100);
         setProcessingResult({ type: 'pdf', content: file });
         
+      } else if (isRTF) {
+        setStage('Μετατροπή RTF σε PDF...');
+        setProgress(25);
+        
+        // RTF processing with 10s timeout
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('RTF timeout - χρήση fallback')), 10000);
+        });
+        
+        const pdfBytes = await Promise.race([
+          convertRTFToPDF(file),
+          timeoutPromise
+        ]);
+        
+        setProgress(75);
+        const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
+          type: 'application/pdf'
+        });
+        
+        setProgress(100);
+        setProcessingResult({ type: 'rtf', content: pdfFile });
+        
+        toast({
+          title: "✅ RTF επεξεργασία",
+          description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
+        });
+        
       } else if (isCSV || isExcel) {
-        console.log('📊 Processing spreadsheet file...');
+        setStage('Επεξεργασία δεδομένων...');
+        setProgress(25);
+        
+        // CSV/Excel processing with 15s timeout
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('CSV/Excel timeout')), 15000);
+        });
+        
         const csvProcessor = new CSVProcessor();
-        const result = await csvProcessor.processCSVFile(file);
+        const result = await Promise.race([
+          csvProcessor.processCSVFile(file),
+          timeoutPromise
+        ]);
+        
+        setProgress(75);
         
         setProcessingResult({ 
           type: isCSV ? 'csv' : 'excel', 
           contacts: result.contacts,
           emails: result.emails
         });
+        
+        setProgress(100);
         
         // Notify parent components
         if (onContactsDetected) onContactsDetected(result.contacts);
@@ -127,30 +164,10 @@ export const UniversalFileProcessor = ({
       });
     } finally {
       setIsProcessing(false);
+      setProgress(0);
     }
   };
 
-  const handleOptimizedFileComplete = async (result: any) => {
-    setShowOptimizedLoader(false);
-    
-    const fileExtension = file!.name.toLowerCase().split('.').pop();
-    const isRTF = fileExtension === 'rtf' || file!.type === 'text/rtf';
-    
-    if (isRTF) {
-      setProcessingResult({ type: 'rtf', content: result });
-      toast({
-        title: "✅ RTF επεξεργασία",
-        description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
-      });
-    } else {
-      setProcessingResult({ type: 'pdf', content: file! });
-    }
-  };
-
-  const handleOptimizedFileCancel = () => {
-    setShowOptimizedLoader(false);
-    setProcessingResult(null);
-  };
 
   const extractTextFromPDF = async (file: File): Promise<string> => {
     // This would need to be implemented with PDF.js
@@ -170,30 +187,26 @@ export const UniversalFileProcessor = ({
     );
   }
 
-  // Show optimized loader for large files
-  if (showOptimizedLoader && file) {
-    const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
-    
-    return (
-      <OptimizedFileLoader
-        file={file}
-        processor={isRTF ? convertRTFToPDF : async (file) => file}
-        onComplete={handleOptimizedFileComplete}
-        onCancel={handleOptimizedFileCancel}
-        className="w-full max-w-md mx-auto"
-      />
-    );
-  }
 
   if (isProcessing) {
     return (
       <Card className="w-full h-full flex items-center justify-center min-h-[600px]">
-        <div className="text-center space-y-4">
-          <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
-          <div className="space-y-2">
-            <p className="text-lg font-medium">Επεξεργασία αρχείου...</p>
-            <p className="text-sm text-muted-foreground">Παρακαλώ περιμένετε</p>
+        <div className="text-center space-y-6 max-w-md">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-lg font-medium">Επεξεργασία αρχείου...</p>
+              <p className="text-sm text-muted-foreground">{stage || 'Προετοιμασία...'}</p>
+            </div>
+            <div className="w-full space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Πρόοδος</span>
+                <span>{progress}%</span>
+              </div>
+              <Progress value={progress} className="h-2" />
+            </div>
           </div>
         </div>
       </Card>
