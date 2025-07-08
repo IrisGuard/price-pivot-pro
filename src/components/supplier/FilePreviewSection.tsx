@@ -20,9 +20,9 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
   const [emails, setEmails] = useState<string[]>([]);
 
   return (
-    <div className="w-full">
-      {/* Universal File Processor */}
-      <div className="w-full">
+    <div className="min-h-screen bg-background">
+      {/* Professional Document Viewer with Dark Background */}
+      <div className="w-full bg-background">
         <ProfessionalDocumentViewer 
           file={file}
           onPricesDetected={onPricesDetected}
@@ -32,14 +32,16 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
         />
       </div>
 
-      {/* Control Panel - A4 Format */}
-      <div className="w-full bg-white">
-        <div className="flex justify-center py-6">
+      {/* Control Panel - Professional A4 Format */}
+      <div className="w-full bg-background py-8">
+        <div className="flex justify-center">
           <div 
-            className="bg-white shadow-xl border border-gray-300"
+            className="bg-white shadow-2xl border border-border print:shadow-none print:border-none"
             style={{ 
               width: '210mm',
-              padding: '15mm'
+              minHeight: '297mm',
+              padding: '20mm',
+              borderRadius: '8px'
             }}
           >
             <ProfessionalControlPanel 
@@ -55,7 +57,6 @@ export const FilePreviewSection = ({ file, onPricesDetected }: FilePreviewSectio
               }}
               onExportCleanPDF={async () => {
                 console.log('Export clean PDF requested');
-                // Enhanced export with A4 format preservation
                 window.print();
               }}
             />

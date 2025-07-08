@@ -38,12 +38,17 @@ export const PDFCanvasRenderer = ({
         </div>
       )}
       
-      {/* Rendered PDF Pages Container - A4 Format */}
+      {/* Rendered PDF Pages Container - Professional A4 Format */}
       {pdfDoc && (
         <div 
           ref={containerRef}
-          className="w-full space-y-4"
-          style={{ maxWidth: '210mm' }}
+          className="space-y-8"
+          style={{ 
+            width: '210mm',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}
         />
       )}
     </div>

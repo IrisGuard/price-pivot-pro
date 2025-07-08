@@ -50,9 +50,9 @@ export const HybridPDFViewer = ({
   const useNativeFallback = forceNativeFallback || (!pdfDoc && pdfUrl && !loading);
 
   return (
-    <div className="w-full min-h-screen bg-white">
+    <div className="w-full bg-background py-8">
       {error && !useNativeFallback && (
-        <Alert className="mx-auto mt-4 max-w-4xl">
+        <Alert className="mx-auto mb-6 max-w-4xl">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
             Σφάλμα φόρτωσης PDF. Χρήση εναλλακτικής προβολής...
@@ -60,13 +60,13 @@ export const HybridPDFViewer = ({
         </Alert>
       )}
 
-      {/* Main Content - Clean A4 Layout */}
-      <div className="flex flex-col items-center py-6">
-        <div className="w-full" style={{ maxWidth: '210mm' }}>
-          {/* Enhanced Loading State */}
-          {loading && (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <div className="text-center space-y-4">
+      {/* Professional A4 Document Layout */}
+      <div className="flex flex-col items-center">
+        {/* Enhanced Loading State */}
+        {loading && (
+          <div className="bg-white shadow-2xl border border-border" style={{ width: '210mm', minHeight: '400px' }}>
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center space-y-4 p-8">
                 <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
                 <div className="space-y-2">
                   <p className="text-lg font-medium text-foreground">Φόρτωση αρχείου...</p>
@@ -74,29 +74,31 @@ export const HybridPDFViewer = ({
                 </div>
               </div>
             </div>
-          )}
-          
-          {/* PDF.js Renderer */}
-          {!useNativeFallback && pdfDoc && !loading && (
-            <PDFCanvasRenderer
-              pdfDoc={pdfDoc}
-              scale={scale}
-              loading={false}
-              onTextExtracted={onTextExtracted}
-              onPricesDetected={onPricesDetected}
-              onRenderComplete={(success) => {
-                if (!success && pdfUrl) {
-                  setForceNativeFallback(true);
-                }
-              }}
-            />
-          )}
-          
-          {/* Browser Native Fallback */}
-          {useNativeFallback && pdfUrl && !loading && (
+          </div>
+        )}
+        
+        {/* PDF.js Renderer */}
+        {!useNativeFallback && pdfDoc && !loading && (
+          <PDFCanvasRenderer
+            pdfDoc={pdfDoc}
+            scale={scale}
+            loading={false}
+            onTextExtracted={onTextExtracted}
+            onPricesDetected={onPricesDetected}
+            onRenderComplete={(success) => {
+              if (!success && pdfUrl) {
+                setForceNativeFallback(true);
+              }
+            }}
+          />
+        )}
+        
+        {/* Browser Native Fallback */}
+        {useNativeFallback && pdfUrl && !loading && (
+          <div className="bg-white shadow-2xl border border-border print:shadow-none print:border-none" style={{ width: '210mm', minHeight: '297mm' }}>
             <PDFBrowserFallback pdfUrl={pdfUrl} />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

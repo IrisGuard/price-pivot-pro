@@ -114,16 +114,17 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
               canvas.height = viewport.height;
               canvas.width = viewport.width;
               
-              // Apply production-ready styling
-              canvas.style.maxWidth = '595px';
-              canvas.style.width = '595px';
+              // Apply professional A4 document styling
+              canvas.style.maxWidth = '210mm';
+              canvas.style.width = '210mm';
               canvas.style.height = 'auto';
               canvas.style.display = 'block';
-              canvas.style.margin = '0 auto 16px auto';
-              canvas.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-              canvas.style.border = '1px solid #e5e7eb';
+              canvas.style.margin = '0 auto 32px auto';
+              canvas.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(255, 255, 255, 0.05)';
+              canvas.style.border = '1px solid hsl(var(--border))';
               canvas.style.backgroundColor = 'white';
               canvas.style.borderRadius = '8px';
+              canvas.style.padding = '20mm';
               canvas.id = `pdf-page-${pageNum}`;
 
               // Render with timeout protection
@@ -173,11 +174,13 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
               // Create fallback placeholder for failed page
               if (!isCancelled) {
                 const placeholder = document.createElement('div');
-                placeholder.className = 'border border-dashed border-gray-300 bg-gray-50 mb-4 mx-auto block rounded-lg flex items-center justify-center';
-                placeholder.style.width = '595px';
-                placeholder.style.height = '842px'; // A4 dimensions
+                placeholder.className = 'border border-dashed bg-white mb-8 mx-auto block rounded-lg flex items-center justify-center';
+                placeholder.style.width = '210mm';
+                placeholder.style.height = '297mm'; // A4 dimensions
+                placeholder.style.boxShadow = '0 25px 50px -12px rgba(0, 0, 0, 0.25)';
+                placeholder.style.border = '1px solid hsl(var(--border))';
                 placeholder.innerHTML = `
-                  <div class="text-center text-gray-500">
+                  <div class="text-center text-muted-foreground">
                     <p>Σελίδα ${pageNum}</p>
                     <p class="text-sm">Σφάλμα φόρτωσης</p>
                   </div>
