@@ -15,7 +15,6 @@ export const PDFCanvasRenderer = ({
   pdfDoc, 
   scale, 
   loading, 
-  currentPageIndex,
   onTextExtracted, 
   onPricesDetected,
   onRenderComplete
@@ -23,7 +22,6 @@ export const PDFCanvasRenderer = ({
   const { containerRef } = usePDFCanvasRenderer({
     pdfDoc,
     scale,
-    currentPageIndex,
     onTextExtracted,
     onPricesDetected,
     onRenderComplete

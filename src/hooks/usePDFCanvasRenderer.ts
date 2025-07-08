@@ -31,10 +31,8 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
       let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
 
       try {
-        // Determine which pages to render
-        const pagesToRender = currentPageIndex >= 0 
-          ? [currentPageIndex + 1] // Render only current page
-          : Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1); // Render all pages
+        // Always render all pages for continuous viewing
+        const pagesToRender = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
 
         for (const pageNum of pagesToRender) {
           const page = await pdfDoc.getPage(pageNum);

@@ -48,9 +48,9 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   }
 
   return (
-    <div className="w-full min-h-screen bg-muted/20">
+    <div className="w-full min-h-screen bg-muted/20 flex flex-col">
       {/* 3-Column Layout: Sidebar + PDF + Content */}
-      <div className="flex">
+      <div className="flex flex-1">
         {/* Left Sidebar with Thumbnails */}
         <PDFSidebar 
           pdfDoc={pdfDoc}
@@ -61,7 +61,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
         />
 
         {/* Main Content Area */}
-        <div className="flex-1 bg-white">
+        <div className="flex-1 flex flex-col bg-white">
           {/* Zoom Controls */}
           <PDFZoomControls
             scale={scale}
@@ -77,33 +77,34 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
             </Alert>
           )}
 
-          {/* PDF Content Container */}
-          <div className="flex justify-center py-8">
-            {/* Canvas Renderer */}
-            {pdfDoc && (
-              <PDFCanvasRenderer
-                pdfDoc={pdfDoc}
-                scale={scale}
-                loading={loading}
-                currentPageIndex={navigation.currentPageIndex}
-                onTextExtracted={onTextExtracted}
-                onPricesDetected={onPricesDetected}
-                onRenderComplete={handleRenderComplete}
-              />
-            )}
-            
-            {/* Browser Fallback */}
-            {(!pdfDoc && pdfUrl && !loading) && (
-              <PDFBrowserFallback pdfUrl={pdfUrl} />
-            )}
+          {/* PDF Content Container - Full width centered */}
+          <div className="flex-1 bg-white overflow-auto">
+            <div className="flex justify-center py-8">
+              {/* Canvas Renderer */}
+              {pdfDoc && (
+                <PDFCanvasRenderer
+                  pdfDoc={pdfDoc}
+                  scale={scale}
+                  loading={loading}
+                  onTextExtracted={onTextExtracted}
+                  onPricesDetected={onPricesDetected}
+                  onRenderComplete={handleRenderComplete}
+                />
+              )}
+              
+              {/* Browser Fallback */}
+              {(!pdfDoc && pdfUrl && !loading) && (
+                <PDFBrowserFallback pdfUrl={pdfUrl} />
+              )}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Professional Control Panel - Always below PDF */}
+      {/* Professional Control Panel - Fixed below all content */}
       {(pagesRendered || (!pdfDoc && pdfUrl)) && (
-        <div className="bg-gray-50 border-t">
-          <div className="flex justify-center py-8">
+        <div className="w-full bg-gray-50 border-t mt-auto">
+          <div className="container mx-auto max-w-4xl py-8">
             <ProfessionalControlPanel 
               pageWidth={595} // A4 width
               isAdminMode={true}
