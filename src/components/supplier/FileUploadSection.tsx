@@ -36,6 +36,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
       }
 
       console.log('✅ File validation passed:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
+      console.log('🔄 Calling onFileChange with file:', file.name);
       
       onFileChange(file);
     }

@@ -63,7 +63,6 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
     console.log('🔄 Processing file:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
     
     // Reset states at start
-    setIsProcessing(false);
     setProcessingResult(null);
     setProgress(0);
     setStage('');
@@ -93,7 +92,6 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
 
     console.log('⚡ Using standard processing');
     setIsProcessing(true);
-    setProcessingResult(null);
     setProgress(0);
 
     try {
@@ -102,14 +100,17 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
       if (validation.isPDF) {
         console.log('📄 Processing PDF file');
         setStage('Φόρτωση PDF...');
-        setProgress(50);
+        setProgress(25);
         
         // Add small delay for UI feedback
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setProgress(75);
         
+        await new Promise(resolve => setTimeout(resolve, 300));
         setProgress(100);
         setProcessingResult({ type: 'pdf', content: file });
         
+        console.log('✅ PDF processing completed successfully');
         toast({
           title: "✅ PDF φορτώθηκε",
           description: "Το PDF είναι έτοιμο για επεξεργασία",
@@ -133,6 +134,7 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
           setProgress(100);
           setProcessingResult({ type: 'rtf', content: pdfFile });
         
+          console.log('✅ RTF processing completed successfully');
           toast({
             title: "✅ RTF επεξεργασία",
             description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
@@ -166,6 +168,7 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
           if (onContactsDetected) onContactsDetected(result.contacts);
           if (onEmailsDetected) onEmailsDetected(result.emails);
           
+          console.log(`✅ ${validation.isCSV ? 'CSV' : 'Excel'} processing completed successfully`);
           toast({
             title: `✅ ${validation.isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
             description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
