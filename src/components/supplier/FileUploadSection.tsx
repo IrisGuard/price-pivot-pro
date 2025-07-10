@@ -81,6 +81,16 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
         </Alert>
 
         <Card className="p-12">
+          {/* Simple file input first */}
+          <div className="mb-8 text-center">
+            <input
+              type="file"
+              accept=".pdf,.rtf,.csv,.xlsx,.xls"
+              onChange={handleDirectFileInput}
+              className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
+            />
+          </div>
+          
           <div
             {...getRootProps()}
             className={`
