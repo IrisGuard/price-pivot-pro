@@ -61,6 +61,13 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
     }
 
     console.log('🔄 Processing file:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
+    
+    // Reset states at start
+    setIsProcessing(false);
+    setProcessingResult(null);
+    setProgress(0);
+    setStage('');
+    setShowOptimizedLoader(false);
 
     const validation = validateFile(file);
     console.log('📁 File type detection:', validation);
@@ -184,7 +191,7 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
       setProgress(0);
       setStage('');
     }
-  }, [convertRTFToPDF, shouldUseOptimizedProcessing, onContactsDetected, onEmailsDetected, toast, validateFile]);
+  }, [convertRTFToPDF, onContactsDetected, onEmailsDetected, toast, shouldUseOptimizedProcessing, validateFile]);
 
   const processFileOptimized = useCallback(async (file: File, signal?: AbortSignal): Promise<ProcessingResult> => {
     const validation = validateFile(file);

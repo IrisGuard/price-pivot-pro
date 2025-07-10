@@ -55,7 +55,7 @@ export const UniversalFileProcessor = ({
     } else {
       resetProcessing();
     }
-  }, [file, processFile, resetProcessing]);
+  }, [file]); // Simplified dependency array to prevent infinite loops
 
   if (!file) {
     return <FileEmptyState />;

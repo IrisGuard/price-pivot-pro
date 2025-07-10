@@ -23,15 +23,19 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
       const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
       
       if (!isPDF && !isRTF && !isCSV && !isExcel) {
+        console.error('❌ Invalid file type:', file.type, 'Extension:', fileExtension);
         alert('Παρακαλώ επιλέξτε PDF, RTF, CSV ή Excel αρχείο');
         return;
       }
       
       // Validate file size (max 50MB)
       if (file.size > 50 * 1024 * 1024) {
+        console.error('❌ File too large:', Math.round(file.size/1024/1024), 'MB');
         alert('Το αρχείο είναι πολύ μεγάλο. Μέγιστο μέγεθος: 50MB');
         return;
       }
+
+      console.log('✅ File validation passed:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
       
       onFileChange(file);
     }
