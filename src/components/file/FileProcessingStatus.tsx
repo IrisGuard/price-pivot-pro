@@ -36,9 +36,14 @@ export const FileProcessingStatus = ({ stage, progress, fileType }: FileProcessi
       <div className="text-center space-y-6 max-w-md">
         <div className="relative">
           <div className="absolute inset-0 flex items-center justify-center">
-            <IconComponent className="h-8 w-8 text-muted-foreground" />
+            <IconComponent className="h-8 w-8 text-muted-foreground animate-pulse" />
           </div>
           <Loader2 className="h-12 w-12 animate-spin mx-auto text-primary" />
+          {progress > 0 && (
+            <div className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground text-xs rounded-full h-6 w-6 flex items-center justify-center font-bold">
+              {Math.round(progress)}%
+            </div>
+          )}
         </div>
         <div className="space-y-4">
           <div>

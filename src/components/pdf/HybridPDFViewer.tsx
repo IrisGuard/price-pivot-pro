@@ -31,7 +31,7 @@ export const HybridPDFViewer = ({
       const timer = setTimeout(() => {
         console.log('🔄 PDF loading timeout - switching to native fallback');
         setForceNativeFallback(true);
-      }, 18000); // 18 seconds for complex PDFs
+      }, 25000); // 25 seconds for complex PDFs
       return () => clearTimeout(timer);
     }
   }, [pdfFile, pdfDoc, forceNativeFallback]);
@@ -81,7 +81,7 @@ export const HybridPDFViewer = ({
                 <div className="animate-spin h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full mx-auto"></div>
                 <div className="space-y-4">
                   <p className="text-lg font-medium text-foreground">Φόρτωση PDF...</p>
-                  <p className="text-sm text-muted-foreground">Μέγιστο 8 δευτερόλεπτα</p>
+                  <p className="text-sm text-muted-foreground">Μέγιστο 25 δευτερόλεπτα για μεγάλα αρχεία</p>
                   <button 
                     onClick={() => setForceNativeFallback(true)}
                     className="px-4 py-2 bg-muted text-muted-foreground rounded-md hover:bg-muted/80 text-sm"
