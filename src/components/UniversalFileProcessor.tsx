@@ -55,20 +55,19 @@ export const UniversalFileProcessor = ({
   useEffect(() => {
     if (!file) {
       setProcessingResult(null);
+      setIsProcessing(false);
+      setProgress(0);
+      setStage('');
       return;
     }
 
+    console.log('🔍 File changed, starting processing:', file.name, file.type);
     processFile();
   }, [file]);
 
-  // Determine if file should use optimized processing
+  // Simplified: Use optimized processing only for very large files or when explicitly requested
   const shouldUseOptimizedProcessing = (file: File) => {
-    const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
-    const isLargeFile = file.size > 2 * 1024 * 1024; // 2MB+
-    const isLargeCSV = (fileExtension === 'csv' || file.type === 'text/csv') && file.size > 1024 * 1024; // 1MB+ CSV
-    
-    return useOptimizedMode || isRTF || isLargeFile || isLargeCSV;
+    return useOptimizedMode || file.size > 10 * 1024 * 1024; // 10MB+ or explicit request
   };
 
   // Optimized file processor for large/complex files
@@ -106,14 +105,19 @@ export const UniversalFileProcessor = ({
   const processFile = async () => {
     if (!file) return;
 
+    console.log('🔄 Processing file:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
+
     const fileExtension = file.name.toLowerCase().split('.').pop();
     const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
     const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
     const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
     const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
 
+    console.log('📁 File type detection:', { isPDF, isRTF, isCSV, isExcel, extension: fileExtension, mimeType: file.type });
+
     // Immediate rejection for unsupported files
     if (!isPDF && !isRTF && !isCSV && !isExcel) {
+      console.error('❌ Unsupported file type');
       toast({
         title: "❌ Μη υποστηριζόμενο αρχείο",
         description: "Υποστηρίζονται μόνο PDF, RTF, CSV και Excel αρχεία",
@@ -125,10 +129,12 @@ export const UniversalFileProcessor = ({
 
     // Check if should use optimized processing
     if (shouldUseOptimizedProcessing(file)) {
+      console.log('🚀 Using optimized processing for large file');
       setShowOptimizedLoader(true);
       return;
     }
 
+    console.log('⚡ Using standard processing');
     setIsProcessing(true);
     setProcessingResult(null);
     setProgress(0);
@@ -137,22 +143,29 @@ export const UniversalFileProcessor = ({
       console.log('🔍 Processing file:', file.name, 'Type:', file.type);
 
       if (isPDF) {
+        console.log('📄 Processing PDF file');
         setStage('Φόρτωση PDF...');
+        setProgress(50);
+        
+        // Add small delay for UI feedback
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
         setProgress(100);
         setProcessingResult({ type: 'pdf', content: file });
         
+        toast({
+          title: "✅ PDF φορτώθηκε",
+          description: "Το PDF είναι έτοιμο για επεξεργασία",
+        });
+        
       } else if (isRTF) {
+        console.log('📝 Processing RTF file');
         setStage('Μετατροπή RTF σε PDF...');
         setProgress(25);
         
-        // RTF processing with timeout via AbortController
-        const timeoutId = setTimeout(() => {
-          console.warn('RTF processing timeout after 12s');
-        }, 12000);
-        
         try {
           const pdfBytes = await convertRTFToPDF(file);
-          clearTimeout(timeoutId);
+          console.log('✅ RTF converted successfully, PDF size:', pdfBytes.length, 'bytes');
         
           setProgress(75);
           const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
@@ -162,30 +175,25 @@ export const UniversalFileProcessor = ({
           
           setProgress(100);
           setProcessingResult({ type: 'rtf', content: pdfFile });
+        
+          toast({
+            title: "✅ RTF επεξεργασία",
+            description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
+          });
         } catch (error) {
-          clearTimeout(timeoutId);
+          console.error('❌ RTF conversion failed:', error);
           throw error;
         }
         
-        toast({
-          title: "✅ RTF επεξεργασία",
-          description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
-        });
-        
       } else if (isCSV || isExcel) {
+        console.log(`📊 Processing ${isCSV ? 'CSV' : 'Excel'} file`);
         setStage('Επεξεργασία δεδομένων...');
         setProgress(25);
         
-        // CSV/Excel processing with timeout
-        const timeoutId = setTimeout(() => {
-          console.warn('CSV/Excel processing timeout after 15s');
-        }, 15000);
-        
-        let result;
         try {
           const csvProcessor = new CSVProcessor();
-          result = await csvProcessor.processCSVFile(file);
-          clearTimeout(timeoutId);
+          const result = await csvProcessor.processCSVFile(file);
+          console.log('✅ CSV/Excel processed successfully, contacts:', result.contacts.length, 'emails:', result.emails.length);
         
           setProgress(75);
           
@@ -206,7 +214,7 @@ export const UniversalFileProcessor = ({
             description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
           });
         } catch (error) {
-          clearTimeout(timeoutId);
+          console.error(`❌ ${isCSV ? 'CSV' : 'Excel'} processing failed:`, error);
           throw error;
         }
       }
@@ -218,12 +226,13 @@ export const UniversalFileProcessor = ({
       
       toast({
         title: "❌ Σφάλμα επεξεργασίας",
-        description: errorMessage,
+        description: `${errorMessage} - Δοκιμάστε διαφορετικό αρχείο ή επικοινωνήστε με υποστήριξη`,
         variant: "destructive",
       });
     } finally {
       setIsProcessing(false);
       setProgress(0);
+      setStage('');
     }
   };
 
@@ -246,6 +255,7 @@ export const UniversalFileProcessor = ({
   };
 
   const handleOptimizedFileCancel = () => {
+    console.log('🔄 Falling back to standard processing');
     setShowOptimizedLoader(false);
     setUseOptimizedMode(false);
     
@@ -255,7 +265,7 @@ export const UniversalFileProcessor = ({
     });
     
     // Fallback to fast processing
-    processFile();
+    setTimeout(() => processFile(), 100);
   };
 
 
