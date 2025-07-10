@@ -11,6 +11,7 @@ import { useClientMode } from '@/hooks/useClientMode';
 import { useAdminMode } from '@/hooks/useAdminMode';
 import { cleanPDFExporter } from '@/lib/pdf/cleanPDFExporter';
 import { AdminLoginModal } from './AdminLoginModal';
+import { EnhancedExportDialog } from './EnhancedExportDialog';
 
 interface CustomerData {
   name: string;
@@ -150,6 +151,37 @@ export const ProfessionalControlPanel = ({
         description: "Δεν υπάρχει αρχείο για εξαγωγή",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleEnhancedExport = async (securitySettings: any) => {
+    if (!pdfFile) {
+      throw new Error('Δεν υπάρχει αρχείο PDF');
+    }
+
+    try {
+      const originalBytes = new Uint8Array(await pdfFile.arrayBuffer());
+      
+      const cleanBytes = await cleanPDFExporter.createCleanPDF(originalBytes, {
+        removeControlPanels: true,
+        applyCustomerData: Object.values(customerData).some(v => v.trim()),
+        customerData: customerData,
+        security: {
+          password: securitySettings.password,
+          watermarkText: securitySettings.watermarkText,
+          watermarkOpacity: securitySettings.watermarkOpacity / 100,
+          preventPrinting: securitySettings.preventPrinting,
+          preventCopying: securitySettings.preventCopying
+        },
+        onProgress: (progress, status) => {
+          // Progress will be handled by the dialog
+        }
+      });
+
+      await cleanPDFExporter.downloadCleanPDF(cleanBytes, 'Προσφορά_Προστατευμένη.pdf');
+    } catch (error) {
+      console.error('Enhanced export error:', error);
+      throw error;
     }
   };
 
@@ -377,13 +409,18 @@ export const ProfessionalControlPanel = ({
               </div>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <Button 
                 onClick={handleExportPDF}
                 className="bg-blue-600 hover:bg-blue-700"
               >
                 📄 ΕΞΑΓΩΓΗ ΚΑΘΑΡΟΥ PDF
               </Button>
+              
+              <EnhancedExportDialog 
+                onExport={handleEnhancedExport}
+                disabled={!pdfFile}
+              />
               
               <Button 
                 onClick={enterClientMode}
