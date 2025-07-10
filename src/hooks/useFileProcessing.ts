@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
-import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
-import { CSVProcessor } from '@/lib/csv/csvProcessor';
+import { useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { useFileValidation } from './useFileValidation';
+import { useFileProcessingState } from './useFileProcessingState';
+import { useFileProcessingCore } from './useFileProcessingCore';
 
 interface PriceData {
   value: number;
@@ -10,46 +11,40 @@ interface PriceData {
   pageIndex: number;
 }
 
-interface ProcessingResult {
-  type: 'pdf' | 'rtf' | 'csv' | 'excel';
-  content?: File;
-  contacts?: any[];
-  emails?: string[];
-  text?: string;
-  error?: string;
-}
-
 interface FileProcessingCallbacks {
   onContactsDetected?: (contacts: any[]) => void;
   onEmailsDetected?: (emails: string[]) => void;
 }
 
 export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
-  const [processingResult, setProcessingResult] = useState<ProcessingResult | null>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [stage, setStage] = useState('');
-  const [useOptimizedMode, setUseOptimizedMode] = useState(false);
-  const [showOptimizedLoader, setShowOptimizedLoader] = useState(false);
-  
-  const { convertRTFToPDF } = useRTFToPDFConverter();
   const { toast } = useToast();
   const { onContactsDetected, onEmailsDetected } = callbacks;
+  
+  const { validateFile, shouldUseOptimizedProcessing } = useFileValidation();
+  const {
+    processingResult,
+    isProcessing,
+    progress,
+    stage,
+    useOptimizedMode,
+    showOptimizedLoader,
+    setProcessingResult,
+    setIsProcessing,
+    setProgress,
+    setStage,
+    setUseOptimizedMode,
+    setShowOptimizedLoader,
+    resetProcessing,
+    initializeProcessing
+  } = useFileProcessingState();
 
-  // Simplified: Use optimized processing only for very large files or when explicitly requested
-  const shouldUseOptimizedProcessing = useCallback((file: File) => {
-    return useOptimizedMode || file.size > 10 * 1024 * 1024; // 10MB+ or explicit request
-  }, [useOptimizedMode]);
-
-  const validateFile = useCallback((file: File) => {
-    const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
-    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
-    const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
-    const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
-
-    return { isPDF, isRTF, isCSV, isExcel, isValid: isPDF || isRTF || isCSV || isExcel };
-  }, []);
+  const { processPDF, processRTF, processCSVExcel, processFileOptimized } = useFileProcessingCore({
+    onContactsDetected,
+    onEmailsDetected,
+    setProgress,
+    setStage,
+    setProcessingResult
+  });
 
   const processFile = useCallback(async (file: File) => {
     if (!file) {
@@ -63,10 +58,7 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
     console.log('🔄 Processing file:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
     
     // Reset states at start
-    setProcessingResult(null);
-    setProgress(0);
-    setStage('');
-    setShowOptimizedLoader(false);
+    initializeProcessing();
 
     const validation = validateFile(file);
     console.log('📁 File type detection:', validation);
@@ -84,7 +76,7 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
     }
 
     // Check if should use optimized processing
-    if (shouldUseOptimizedProcessing(file)) {
+    if (shouldUseOptimizedProcessing(file, useOptimizedMode)) {
       console.log('🚀 Using optimized processing for large file');
       setShowOptimizedLoader(true);
       return;
@@ -98,85 +90,11 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
       console.log('🔍 Processing file:', file.name, 'Type:', file.type);
 
       if (validation.isPDF) {
-        console.log('📄 Processing PDF file');
-        setStage('Φόρτωση PDF...');
-        setProgress(25);
-        
-        // Add small delay for UI feedback
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setProgress(75);
-        
-        await new Promise(resolve => setTimeout(resolve, 300));
-        setProgress(100);
-        setProcessingResult({ type: 'pdf', content: file });
-        
-        console.log('✅ PDF processing completed successfully');
-        toast({
-          title: "✅ PDF φορτώθηκε",
-          description: "Το PDF είναι έτοιμο για επεξεργασία",
-        });
-        
+        await processPDF(file);
       } else if (validation.isRTF) {
-        console.log('📝 Processing RTF file');
-        setStage('Μετατροπή RTF σε PDF...');
-        setProgress(25);
-        
-        try {
-          const pdfBytes = await convertRTFToPDF(file);
-          console.log('✅ RTF converted successfully, PDF size:', pdfBytes.length, 'bytes');
-        
-          setProgress(75);
-          const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-          const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-            type: 'application/pdf'
-          });
-          
-          setProgress(100);
-          setProcessingResult({ type: 'rtf', content: pdfFile });
-        
-          console.log('✅ RTF processing completed successfully');
-          toast({
-            title: "✅ RTF επεξεργασία",
-            description: "Το RTF μετατράπηκε επιτυχώς σε PDF",
-          });
-        } catch (error) {
-          console.error('❌ RTF conversion failed:', error);
-          throw error;
-        }
-        
+        await processRTF(file);
       } else if (validation.isCSV || validation.isExcel) {
-        console.log(`📊 Processing ${validation.isCSV ? 'CSV' : 'Excel'} file`);
-        setStage('Επεξεργασία δεδομένων...');
-        setProgress(25);
-        
-        try {
-          const csvProcessor = new CSVProcessor();
-          const result = await csvProcessor.processCSVFile(file);
-          console.log('✅ CSV/Excel processed successfully, contacts:', result.contacts.length, 'emails:', result.emails.length);
-        
-          setProgress(75);
-          
-          setProcessingResult({ 
-            type: validation.isCSV ? 'csv' : 'excel', 
-            contacts: result.contacts,
-            emails: result.emails
-          });
-          
-          setProgress(100);
-          
-          // Notify parent components
-          if (onContactsDetected) onContactsDetected(result.contacts);
-          if (onEmailsDetected) onEmailsDetected(result.emails);
-          
-          console.log(`✅ ${validation.isCSV ? 'CSV' : 'Excel'} processing completed successfully`);
-          toast({
-            title: `✅ ${validation.isCSV ? 'CSV' : 'Excel'} επεξεργασία`,
-            description: `Βρέθηκαν ${result.contacts.length} επαφές και ${result.emails.length} emails`,
-          });
-        } catch (error) {
-          console.error(`❌ ${validation.isCSV ? 'CSV' : 'Excel'} processing failed:`, error);
-          throw error;
-        }
+        await processCSVExcel(file, validation);
       }
       
     } catch (error) {
@@ -194,36 +112,10 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
       setProgress(0);
       setStage('');
     }
-  }, [convertRTFToPDF, onContactsDetected, onEmailsDetected, toast, shouldUseOptimizedProcessing, validateFile]);
+  }, [onContactsDetected, onEmailsDetected, toast, shouldUseOptimizedProcessing, validateFile, processPDF, processRTF, processCSVExcel, setIsProcessing, setProgress, setStage, setProcessingResult, initializeProcessing]);
 
-  const processFileOptimized = useCallback(async (file: File, signal?: AbortSignal): Promise<ProcessingResult> => {
-    const validation = validateFile(file);
 
-    if (signal?.aborted) throw new Error('Processing cancelled');
-
-    if (validation.isPDF) {
-      return { type: 'pdf', content: file };
-    } else if (validation.isRTF) {
-      const pdfBytes = await convertRTFToPDF(file, signal);
-      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-        type: 'application/pdf'
-      });
-      return { type: 'rtf', content: pdfFile };
-    } else if (validation.isCSV || validation.isExcel) {
-      const csvProcessor = new CSVProcessor();
-      const result = await csvProcessor.processCSVFile(file, signal);
-      return { 
-        type: validation.isCSV ? 'csv' : 'excel', 
-        contacts: result.contacts,
-        emails: result.emails
-      };
-    }
-    
-    throw new Error('Μη υποστηριζόμενος τύπος αρχείου');
-  }, [convertRTFToPDF, validateFile]);
-
-  const handleOptimizedFileComplete = useCallback((result: ProcessingResult) => {
+  const handleOptimizedFileComplete = useCallback((result: any) => {
     setProcessingResult(result);
     setShowOptimizedLoader(false);
     
@@ -239,7 +131,7 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
           `Το ${resultType} μετατράπηκε επιτυχώς σε PDF`,
       });
     }
-  }, [onContactsDetected, onEmailsDetected, toast]);
+  }, [onContactsDetected, onEmailsDetected, toast, setProcessingResult, setShowOptimizedLoader]);
 
   const handleOptimizedFileCancel = useCallback(() => {
     console.log('🔄 Falling back to standard processing');
@@ -250,15 +142,8 @@ export const useFileProcessing = (callbacks: FileProcessingCallbacks = {}) => {
       title: "⚡ Μετάβαση σε γρήγορη φόρτωση",
       description: "Δοκιμή με βασικό processing mode...",
     });
-  }, [toast]);
+  }, [toast, setShowOptimizedLoader, setUseOptimizedMode]);
 
-  const resetProcessing = useCallback(() => {
-    setProcessingResult(null);
-    setIsProcessing(false);
-    setProgress(0);
-    setStage('');
-    setShowOptimizedLoader(false);
-  }, []);
 
   return {
     processingResult,

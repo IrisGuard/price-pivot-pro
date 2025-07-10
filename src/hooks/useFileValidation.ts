@@ -1,72 +1,30 @@
-import { useState } from 'react';
+import { useCallback } from 'react';
 
-export interface FileValidationResult {
+export interface FileValidation {
+  isPDF: boolean;
+  isRTF: boolean;
+  isCSV: boolean;
+  isExcel: boolean;
   isValid: boolean;
-  error?: string;
-  fileType?: 'pdf' | 'rtf' | 'csv' | 'excel';
-  details?: {
-    size: string;
-    mimeType: string;
-    extension: string;
-  };
 }
 
 export const useFileValidation = () => {
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const validateFile = useCallback((file: File): FileValidation => {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
+    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+    const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
+    const isExcel = Boolean(fileExtension?.match(/^(xlsx|xls)$/)) || file.type.includes('spreadsheet');
 
-  const validateFile = (file: File): FileValidationResult => {
-    setValidationError(null);
+    return { isPDF, isRTF, isCSV, isExcel, isValid: isPDF || isRTF || isCSV || isExcel };
+  }, []);
 
-    // Enhanced file details
-    const fileName = file.name.toLowerCase();
-    const extension = fileName.split('.').pop() || '';
-    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-    
-    const details = {
-      size: `${sizeInMB} MB`,
-      mimeType: file.type || 'unknown',
-      extension: extension
-    };
-
-    // Check file size (max 50MB)
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      const error = `Το αρχείο είναι πολύ μεγάλο (${sizeInMB} MB). Μέγιστο μέγεθος: 50MB`;
-      setValidationError(error);
-      return { isValid: false, error, details };
-    }
-
-    // Enhanced file type checking with better error messages
-    if (fileName.endsWith('.pdf') || file.type === 'application/pdf') {
-      return { isValid: true, fileType: 'pdf', details };
-    } else if (fileName.endsWith('.rtf') || file.type === 'text/rtf') {
-      return { isValid: true, fileType: 'rtf', details };
-    } else if (fileName.endsWith('.csv') || file.type === 'text/csv') {
-      return { isValid: true, fileType: 'csv', details };
-    } else if (fileName.match(/\.(xlsx|xls)$/) || file.type.includes('spreadsheet')) {
-      return { isValid: true, fileType: 'excel', details };
-    } else {
-      // Check for common typos
-      if (fileName.endsWith('.rpf')) {
-        const error = 'Μήπως εννοείτε RTF αρχείο; Το .rpf δεν υποστηρίζεται.';
-        setValidationError(error);
-        return { isValid: false, error, details };
-      }
-      
-      const supportedTypes = 'PDF, RTF, CSV, Excel (.xlsx, .xls)';
-      const error = `Μη υποστηριζόμενος τύπος αρχείου: "${extension}". Υποστηρίζονται: ${supportedTypes}`;
-      setValidationError(error);
-      return { isValid: false, error, details };
-    }
-  };
-
-  const clearValidationError = () => {
-    setValidationError(null);
-  };
+  const shouldUseOptimizedProcessing = useCallback((file: File, useOptimizedMode: boolean) => {
+    return useOptimizedMode || file.size > 10 * 1024 * 1024; // 10MB+ or explicit request
+  }, []);
 
   return {
     validateFile,
-    validationError,
-    clearValidationError
+    shouldUseOptimizedProcessing
   };
 };
