@@ -1,15 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, AlertCircle } from 'lucide-react';
+import { Upload, FileText, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { FilePreview } from '@/components/file/FilePreview';
 
 interface FileUploadSectionProps {
   onFileChange: (file: File | null) => void;
 }
 
 export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  
   const handleFileSelect = useCallback((files: File[]) => {
     if (files.length > 0) {
       const file = files[0];
@@ -38,6 +41,7 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
       console.log('✅ File validation passed:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
       console.log('🔄 Calling onFileChange with file:', file.name);
       
+      setUploadedFile(file);
       onFileChange(file);
     }
   }, [onFileChange]);
@@ -105,6 +109,19 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
             </div>
           </div>
         </Card>
+
+        {/* Enhanced File Preview */}
+        {uploadedFile && (
+          <div className="mt-6">
+            <FilePreview 
+              file={uploadedFile} 
+              onRemove={() => {
+                setUploadedFile(null);
+                onFileChange(null);
+              }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

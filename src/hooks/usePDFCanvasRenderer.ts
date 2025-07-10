@@ -137,7 +137,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
 
               const renderPromise = page.render(renderContext).promise;
               const timeoutPromise = new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Render timeout')), 10000) // Reduced to 10s
+                setTimeout(() => reject(new Error('Render timeout')), 20000) // Increased to 20s for complex pages
               );
 
               await Promise.race([renderPromise, timeoutPromise]);
@@ -156,14 +156,10 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
 
                   allText += textItems + ' ';
 
-                  // Extract prices from this page
-                  const priceMatches = textItems.match(/\d+[.,]\d{2}/g) || [];
-                  const pagePrices = priceMatches.map((match, index) => ({
-                    value: parseFloat(match.replace(',', '.')),
-                    x: 450 + (index * 30),
-                    y: 650 - index * 25,
-                    pageIndex: pageNum - 1
-                  }));
+                  // Enhanced price extraction using improved algorithm
+                  const { usePriceExtraction } = await import('@/hooks/usePriceExtraction');
+                  const extractor = usePriceExtraction();
+                  const pagePrices = extractor.extractPricesFromText(textItems, pageNum - 1);
                   
                   allPrices = [...allPrices, ...pagePrices];
                 } catch (textError) {

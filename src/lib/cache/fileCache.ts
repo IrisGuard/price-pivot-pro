@@ -12,8 +12,8 @@ interface CacheEntry {
 
 class FileCache {
   private cache = new Map<string, CacheEntry>();
-  private maxCacheSize = 50 * 1024 * 1024; // 50MB
-  private maxAge = 30 * 60 * 1000; // 30 minutes
+  private maxCacheSize = 100 * 1024 * 1024; // 100MB for enhanced performance
+  private maxAge = 15 * 60 * 1000; // 15 minutes for faster updates
   
   constructor() {
     // Clear cache periodically

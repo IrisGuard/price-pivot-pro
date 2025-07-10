@@ -62,7 +62,7 @@ export const UniversalFileProcessor = ({
   }
 
   if (isProcessing) {
-    return <FileProcessingStatus stage={stage} progress={progress} />;
+    return <FileProcessingStatus stage={stage} progress={progress} fileType={file?.type} />;
   }
 
   if (showOptimizedLoader) {

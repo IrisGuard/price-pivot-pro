@@ -31,7 +31,7 @@ export const HybridPDFViewer = ({
       const timer = setTimeout(() => {
         console.log('🔄 PDF loading timeout - switching to native fallback');
         setForceNativeFallback(true);
-      }, 12000); // 12 seconds for production
+      }, 18000); // 18 seconds for complex PDFs
       return () => clearTimeout(timer);
     }
   }, [pdfFile, pdfDoc, forceNativeFallback]);

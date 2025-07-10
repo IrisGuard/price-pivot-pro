@@ -34,9 +34,9 @@ export const usePDFLoader = (pdfFile: File | null) => {
           throw new Error(`Αρχείο πολύ μεγάλο: ${Math.round(pdfFile.size / 1024 / 1024)}MB > 30MB`);
         }
         
-        // Fast timeout - 8 seconds with immediate fallback
+        // Enhanced timeout - 15 seconds for larger PDFs
         const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('PDF φόρτωση timeout - χρήση εναλλακτικής προβολής')), 8000);
+          setTimeout(() => reject(new Error('PDF φόρτωση timeout - χρήση εναλλακτικής προβολής')), 15000);
         });
 
         const pdfPromise = async () => {
@@ -49,7 +49,11 @@ export const usePDFLoader = (pdfFile: File | null) => {
             disableStream: true,
             useSystemFonts: true,
             useWorkerFetch: false,
-            stopAtErrors: false
+            stopAtErrors: false,
+            // Enhanced memory management
+            maxImageSize: 16777216, // 16MB max image size
+            cMapPacked: true,
+            standardFontDataUrl: undefined // Reduce memory usage
           });
           
           const doc = await loadingTask.promise;
