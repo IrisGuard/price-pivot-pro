@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { HybridPDFViewer } from './pdf/HybridPDFViewer';
 import { OptimizedFileLoader } from './shared/OptimizedFileLoader';
 import { useRTFToPDFConverter } from '@/hooks/useRTFToPDFConverter';
@@ -52,7 +52,12 @@ export const UniversalFileProcessor = ({
   const { convertRTFToPDF } = useRTFToPDFConverter();
   const { toast } = useToast();
 
-  useEffect(() => {
+  // Simplified: Use optimized processing only for very large files or when explicitly requested
+  const shouldUseOptimizedProcessing = useCallback((file: File) => {
+    return useOptimizedMode || file.size > 10 * 1024 * 1024; // 10MB+ or explicit request
+  }, [useOptimizedMode]);
+
+  const processFile = useCallback(async () => {
     if (!file) {
       setProcessingResult(null);
       setIsProcessing(false);
@@ -60,50 +65,6 @@ export const UniversalFileProcessor = ({
       setStage('');
       return;
     }
-
-    console.log('🔍 File changed, starting processing:', file.name, file.type);
-    processFile();
-  }, [file]);
-
-  // Simplified: Use optimized processing only for very large files or when explicitly requested
-  const shouldUseOptimizedProcessing = (file: File) => {
-    return useOptimizedMode || file.size > 10 * 1024 * 1024; // 10MB+ or explicit request
-  };
-
-  // Optimized file processor for large/complex files
-  const processFileOptimized = async (file: File, signal?: AbortSignal): Promise<ProcessingResult> => {
-    const fileExtension = file.name.toLowerCase().split('.').pop();
-    const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
-    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
-    const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
-    const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
-
-    if (signal?.aborted) throw new Error('Processing cancelled');
-
-    if (isPDF) {
-      return { type: 'pdf', content: file };
-    } else if (isRTF) {
-      const pdfBytes = await convertRTFToPDF(file, signal);
-      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
-      const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
-        type: 'application/pdf'
-      });
-      return { type: 'rtf', content: pdfFile };
-    } else if (isCSV || isExcel) {
-      const csvProcessor = new CSVProcessor();
-      const result = await csvProcessor.processCSVFile(file, signal);
-      return { 
-        type: isCSV ? 'csv' : 'excel', 
-        contacts: result.contacts,
-        emails: result.emails
-      };
-    }
-    
-    throw new Error('Μη υποστηριζόμενος τύπος αρχείου');
-  };
-
-  const processFile = async () => {
-    if (!file) return;
 
     console.log('🔄 Processing file:', file.name, 'Size:', Math.round(file.size/1024), 'KB');
 
@@ -234,7 +195,52 @@ export const UniversalFileProcessor = ({
       setProgress(0);
       setStage('');
     }
-  };
+  }, [file, convertRTFToPDF, shouldUseOptimizedProcessing, onContactsDetected, onEmailsDetected, toast]);
+
+  useEffect(() => {
+    if (!file) {
+      setProcessingResult(null);
+      setIsProcessing(false);
+      setProgress(0);
+      setStage('');
+      return;
+    }
+
+    console.log('🔍 File changed, starting processing:', file.name, file.type);
+    processFile();
+  }, [file, processFile]);
+
+  // Optimized file processor for large/complex files
+  const processFileOptimized = useCallback(async (file: File, signal?: AbortSignal): Promise<ProcessingResult> => {
+    const fileExtension = file.name.toLowerCase().split('.').pop();
+    const isPDF = fileExtension === 'pdf' || file.type === 'application/pdf';
+    const isRTF = fileExtension === 'rtf' || file.type === 'text/rtf';
+    const isCSV = fileExtension === 'csv' || file.type === 'text/csv';
+    const isExcel = fileExtension?.match(/^(xlsx|xls)$/) || file.type.includes('spreadsheet');
+
+    if (signal?.aborted) throw new Error('Processing cancelled');
+
+    if (isPDF) {
+      return { type: 'pdf', content: file };
+    } else if (isRTF) {
+      const pdfBytes = await convertRTFToPDF(file, signal);
+      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
+        type: 'application/pdf'
+      });
+      return { type: 'rtf', content: pdfFile };
+    } else if (isCSV || isExcel) {
+      const csvProcessor = new CSVProcessor();
+      const result = await csvProcessor.processCSVFile(file, signal);
+      return { 
+        type: isCSV ? 'csv' : 'excel', 
+        contacts: result.contacts,
+        emails: result.emails
+      };
+    }
+    
+    throw new Error('Μη υποστηριζόμενος τύπος αρχείου');
+  }, [convertRTFToPDF]);
 
   const handleOptimizedFileComplete = (result: ProcessingResult) => {
     setProcessingResult(result);
