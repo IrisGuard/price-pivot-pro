@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HybridPDFViewer } from './pdf/HybridPDFViewer';
+import { LazyPDFViewer } from './lazy/LazyPDFViewer';
 import { OptimizedFileLoader } from './shared/OptimizedFileLoader';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { FileText } from 'lucide-react';
@@ -8,6 +8,9 @@ import { FileProcessingStatus } from './file/FileProcessingStatus';
 import { FileProcessingError } from './file/FileProcessingError';
 import { FileResultsDisplay } from './file/FileResultsDisplay';
 import { FileEmptyState } from './file/FileEmptyState';
+import { ErrorBoundary } from './ErrorBoundary';
+import { useMemoryOptimization } from '@/hooks/useMemoryOptimization';
+import { useEnhancedToast } from '@/hooks/useEnhancedToast';
 
 interface PriceData {
   value: number;
@@ -47,6 +50,14 @@ export const UniversalFileProcessor = ({
     resetProcessing,
     setUseOptimizedMode
   } = useFileProcessing({ onContactsDetected, onEmailsDetected });
+
+  const { showWarning } = useEnhancedToast();
+  const { registerCleanup } = useMemoryOptimization({
+    maxMemoryUsage: 400,
+    onMemoryWarning: (usage) => {
+      showWarning(`Υψηλή χρήση μνήμης: ${usage.toFixed(1)}MB`, 'Κάντε restart αν η εφαρμογή γίνει αργή');
+    }
+  });
 
   useEffect(() => {
     if (file) {
@@ -103,23 +114,26 @@ export const UniversalFileProcessor = ({
     return <FileResultsDisplay result={processingResult} />;
   }
 
-  // PDF/RTF display with notice
+  // PDF/RTF display with notice and error boundary
   return (
-    <div className="w-full space-y-2">
-      {processingResult?.type === 'rtf' && (
-        <Alert>
-          <FileText className="h-4 w-4" />
-          <AlertDescription>
-            Το RTF αρχείο μετατράπηκε αυτόματα σε PDF για βέλτιστη προβολή
-          </AlertDescription>
-        </Alert>
-      )}
-      <HybridPDFViewer
-        pdfFile={processingResult?.content}
-        detectedPrices={detectedPrices}
-        onPricesDetected={onPricesDetected}
-        onTextExtracted={onTextExtracted}
-      />
-    </div>
+    <ErrorBoundary>
+      <div className="w-full space-y-2">
+        {processingResult?.type === 'rtf' && (
+          <Alert>
+            <FileText className="h-4 w-4" />
+            <AlertDescription>
+              Το RTF αρχείο μετατράπηκε αυτόματα σε PDF για βέλτιστη προβολή
+            </AlertDescription>
+          </Alert>
+        )}
+        <LazyPDFViewer
+          pdfFile={processingResult?.content}
+          detectedPrices={detectedPrices}
+          onPricesDetected={onPricesDetected}
+          onTextExtracted={onTextExtracted}
+          mode="hybrid"
+        />
+      </div>
+    </ErrorBoundary>
   );
 };

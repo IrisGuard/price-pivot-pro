@@ -1,5 +1,7 @@
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
+import { useProgressiveLoading } from './useProgressiveLoading';
+import { useMemoryOptimization } from './useMemoryOptimization';
 
 interface PDFCanvasRendererOptions {
   pdfDoc: pdfjsLib.PDFDocumentProxy | null;
@@ -17,6 +19,12 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
   const lastRenderedRef = useRef<{ pdfDoc: pdfjsLib.PDFDocumentProxy | null; scale: number; numPages: number } | null>(null);
   const canvasesRef = useRef<HTMLCanvasElement[]>([]);
   const renderingRef = useRef(false);
+
+  const { registerCleanup } = useMemoryOptimization();
+  const { processInChunks } = useProgressiveLoading({
+    chunkSize: 2, // Process 2 pages at a time for better performance
+    initialDelay: 50
+  });
 
   // Stable callbacks with empty dependencies to prevent infinite re-renders
   const stableOnTextExtracted = useCallback((text: string, pageIndex?: number) => {
@@ -98,8 +106,21 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
           let allPrices: Array<{ value: number; x: number; y: number; pageIndex: number }> = [];
           const newCanvases: HTMLCanvasElement[] = [];
 
-          for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-            if (isCancelled) break;
+          // Register memory cleanup
+          const cleanup = registerCleanup(() => {
+            canvasesRef.current.forEach(canvas => {
+              const ctx = canvas.getContext('2d');
+              if (ctx) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+              }
+            });
+          });
+
+          const pageNumbers = Array.from({ length: pdfDoc.numPages }, (_, i) => i + 1);
+          
+          // Use progressive loading for better performance
+          await processInChunks(pageNumbers, async (pageNum) => {
+            if (isCancelled) return;
             
             try {
               const page = await pdfDoc.getPage(pageNum);
@@ -186,7 +207,10 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
                 container.appendChild(placeholder);
               }
             }
-          }
+          });
+
+          // Cleanup after processing
+          cleanup();
 
           if (!isCancelled) {
             // Update tracking

@@ -39,6 +39,17 @@ All colors MUST be HSL.
     --destructive: 0 84% 60%;
     --destructive-foreground: 214 31% 12%;
 
+    /* Performance optimizations */
+    --shadow-optimized: 0 4px 12px -2px hsl(var(--primary) / 0.1);
+    --gradient-performance: linear-gradient(135deg, hsl(var(--primary) / 0.05), hsl(var(--accent) / 0.05));
+    
+    /* Loading states */
+    --shimmer: linear-gradient(90deg, transparent 0%, hsl(var(--muted) / 0.4) 50%, transparent 100%);
+    
+    /* Memory optimization indicators */
+    --memory-warning: 45 93% 47%;
+    --memory-critical: 0 84% 60%;
+
     --border: 214 31% 25%;
     --input: 214 31% 25%;
     --ring: 212 95% 38%;
