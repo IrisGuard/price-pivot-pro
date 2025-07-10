@@ -13,7 +13,10 @@ interface FileUploadSectionProps {
 export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   
+  console.log('🔄 FileUploadSection rendered, onFileChange:', typeof onFileChange);
+  
   const handleFileSelect = useCallback((files: File[]) => {
+    console.log('📁 handleFileSelect called with files:', files.length);
     if (files.length > 0) {
       const file = files[0];
       
@@ -59,6 +62,14 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
     maxSize: 50 * 1024 * 1024 // 50MB
   });
 
+  const handleDirectFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('📂 Direct file input triggered');
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      handleFileSelect(Array.from(files));
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-12">
       <div className="max-w-4xl mx-auto">
@@ -97,9 +108,29 @@ export const FileUploadSection = ({ onFileChange }: FileUploadSectionProps) => {
                 </p>
               </div>
               
-              <Button size="lg" variant="outline">
+              <Button size="lg" variant="outline" onClick={() => console.log('🔘 Button clicked')}>
                 <Upload className="h-5 w-5 mr-2" />
                 Επιλογή αρχείου
+              </Button>
+              
+              {/* Fallback file input */}
+              <input
+                type="file"
+                accept=".pdf,.rtf,.csv,.xlsx,.xls"
+                onChange={handleDirectFileInput}
+                style={{ display: 'none' }}
+                id="file-input-fallback"
+              />
+              <Button 
+                size="lg" 
+                variant="secondary" 
+                onClick={() => {
+                  console.log('🔘 Fallback button clicked');
+                  document.getElementById('file-input-fallback')?.click();
+                }}
+                className="ml-2"
+              >
+                Εναλλακτική επιλογή
               </Button>
               
               <div className="text-sm text-muted-foreground">
