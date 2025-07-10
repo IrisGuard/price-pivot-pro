@@ -7,7 +7,7 @@ interface PDFCanvasRendererProps {
   loading: boolean;
   detectedPrices?: Array<{ value: number; x: number; y: number; pageIndex: number }>;
   currentPageIndex?: number;
-  onTextExtracted?: (text: string) => void;
+  onTextExtracted?: (text: string, pageIndex?: number) => void;
   onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
   onRenderComplete?: (success: boolean) => void;
 }

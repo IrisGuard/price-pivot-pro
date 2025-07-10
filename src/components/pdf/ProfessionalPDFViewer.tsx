@@ -3,7 +3,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { usePDFLoader } from '@/hooks/usePDFLoader';
-import { useSmartPriceDetection } from '@/hooks/useSmartPriceDetection';
+import { useAdvancedPriceExtraction } from '@/hooks/useAdvancedPriceExtraction';
 import { useBannerReplacement } from '@/hooks/useBannerReplacement';
 import { useCustomerDataIntegration } from '@/hooks/useCustomerDataIntegration';
 import { PDFZoomControls } from '@/components/pdf/PDFZoomControls';
@@ -11,7 +11,7 @@ import { PDFCanvasRenderer } from '@/components/pdf/PDFCanvasRenderer';
 import { PDFBrowserFallback } from '@/components/pdf/PDFBrowserFallback';
 
 import { ProfessionalControlPanel } from '@/components/pdf/ProfessionalControlPanel';
-import { PriceDetectionOverlay } from '@/components/pdf/PriceDetectionOverlay';
+import { InteractivePriceEditor } from '@/components/pdf/InteractivePriceEditor';
 
 interface ProfessionalPDFViewerProps {
   pdfFile: File | null;
@@ -26,8 +26,8 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
   
   const { pdfDoc, loading, error, pdfUrl } = usePDFLoader(pdfFile);
   
-  // ΦΑΣΗ 2: Smart Features
-  const priceDetection = useSmartPriceDetection();
+  // ΦΑΣΗ 2: Advanced Price Processing
+  const priceExtraction = useAdvancedPriceExtraction();
   const bannerReplacement = useBannerReplacement();
   const customerDataIntegration = useCustomerDataIntegration();
 
@@ -53,12 +53,12 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
     onPricesDetected?.(prices);
   }, []);
 
-  // Αυτόματη ανίχνευση τιμών όταν φορτώνεται το PDF
-  useEffect(() => {
-    if (pdfDoc && !priceDetection.isDetecting) {
-      priceDetection.detectPricesInPDF(pdfDoc);
-    }
-  }, [pdfDoc]);
+  // Enhanced text extraction callback για advanced price detection
+  const enhancedOnTextExtracted = useCallback((text: string, pageIndex: number = 0) => {
+    onTextExtracted?.(text);
+    // Trigger smart price extraction
+    priceExtraction.extractSmartPrices(text, pageIndex);
+  }, [onTextExtracted, priceExtraction]);
 
   if (!pdfFile) {
     return (
@@ -103,7 +103,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
                 pdfDoc={pdfDoc}
                 scale={scale}
                 loading={loading}
-                onTextExtracted={stableOnTextExtracted}
+                onTextExtracted={enhancedOnTextExtracted}
                 onPricesDetected={stableOnPricesDetected}
                 onRenderComplete={handleRenderComplete}
               />
@@ -126,7 +126,7 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
                 pageWidth={595} // A4 width
                 pdfFile={pdfFile}
                 onPercentageChange={(percentage) => {
-                  priceDetection.applyPercentageToAllPrices(percentage);
+                  priceExtraction.applyPercentageToAllPrices(percentage);
                 }}
                 onBannerChange={(file) => {
                   bannerReplacement.loadBannerFile(file);
@@ -169,14 +169,17 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
         </div>
       </div>
 
-      {/* ΦΑΣΗ 2: Price Detection Overlay */}
-      {pdfDoc && priceDetection.detectedPrices.length > 0 && (
-        <PriceDetectionOverlay
-          detectedPrices={priceDetection.detectedPrices}
-          onPriceUpdate={priceDetection.updateSinglePrice}
-          onPercentageApply={priceDetection.applyPercentageToAllPrices}
-          onReset={priceDetection.resetPrices}
-          isDetecting={priceDetection.isDetecting}
+      {/* ΦΑΣΗ 2: Interactive Price Editor */}
+      {pdfDoc && priceExtraction.detectedPrices.length > 0 && (
+        <InteractivePriceEditor
+          detectedPrices={priceExtraction.detectedPrices}
+          onPriceUpdate={priceExtraction.updateSinglePrice}
+          onPercentageApply={priceExtraction.applyPercentageToAllPrices}
+          onReset={priceExtraction.resetAllPrices}
+          isDetecting={priceExtraction.isDetecting}
+          statistics={priceExtraction.getPriceStatistics()}
+          groupedPrices={priceExtraction.getGroupedPrices()}
+          formatPrice={priceExtraction.formatPrice}
         />
       )}
     </div>

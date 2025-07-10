@@ -6,7 +6,7 @@ interface PDFCanvasRendererOptions {
   scale: number;
   detectedPrices?: Array<{ value: number; x: number; y: number; pageIndex: number }>;
   currentPageIndex?: number;
-  onTextExtracted?: (text: string) => void;
+  onTextExtracted?: (text: string, pageIndex?: number) => void;
   onPricesDetected?: (prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => void;
   onRenderComplete?: (success: boolean) => void;
 }
@@ -19,8 +19,8 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
   const renderingRef = useRef(false);
 
   // Stable callbacks with empty dependencies to prevent infinite re-renders
-  const stableOnTextExtracted = useCallback((text: string) => {
-    onTextExtracted?.(text);
+  const stableOnTextExtracted = useCallback((text: string, pageIndex?: number) => {
+    onTextExtracted?.(text, pageIndex);
   }, []);
 
   const stableOnPricesDetected = useCallback((prices: Array<{ value: number; x: number; y: number; pageIndex: number }>) => {
@@ -195,7 +195,7 @@ export const usePDFCanvasRenderer = (options: PDFCanvasRendererOptions) => {
 
             // Call callbacks with extracted data
             if (allText) {
-              stableOnTextExtracted(allText);
+              stableOnTextExtracted(allText, 0); // Pass page index for multi-page processing
             }
             if (allPrices.length > 0) {
               stableOnPricesDetected(allPrices);
