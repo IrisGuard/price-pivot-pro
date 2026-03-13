@@ -17,8 +17,7 @@ export interface PDFExtractionResult {
   fullText: string;
 }
 
-// Set worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
+// Worker is set globally in main.tsx
 
 /**
  * Extracts all prices from a PDF or RTF file
