@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { extractPricesFromPDF } from "@/lib/pdf/pdfTextExtractor";
+import { extractPricesFromFile } from "@/lib/pdf/pdfTextExtractor";
 import type { ExtractedPrice } from "@/lib/pdf/pdfTextExtractor";
 
 const SupplierTool = () => {
