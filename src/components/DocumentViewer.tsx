@@ -78,6 +78,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
       setError(null);
       setPreviewUrl(null);
       setRtfPages([]);
+      setRtfRuntimeStyles("");
 
       try {
         if (!isRTF) {
