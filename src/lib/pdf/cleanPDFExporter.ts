@@ -138,7 +138,7 @@ export class CleanPDFExporter {
       
       onProgress?.(50, 'Δημιουργία download link...');
       
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       
       // Generate filename with timestamp if not provided

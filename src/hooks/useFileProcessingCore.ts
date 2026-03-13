@@ -114,7 +114,7 @@ export const useFileProcessingCore = (callbacks: ProcessingCallbacks) => {
       return { type: 'pdf', content: file };
     } else if (isRTF) {
       const pdfBytes = await convertRTFToPDF(file, signal);
-      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const pdfBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
         type: 'application/pdf'
       });
