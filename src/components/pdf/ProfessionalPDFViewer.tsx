@@ -141,13 +141,13 @@ export const ProfessionalPDFViewer = ({ pdfFile, onTextExtracted, onPricesDetect
                   
                   try {
                     // Δημιουργία καθαρού PDF με όλες τις αλλαγές
-                    let pdfBytes = new Uint8Array(await pdfFile.arrayBuffer());
+                    let pdfBytes = new Uint8Array(await pdfFile.arrayBuffer()) as Uint8Array<ArrayBuffer>;
                     
                     // Εφαρμογή banner
-                    pdfBytes = await bannerReplacement.applyBannerToPDF(pdfBytes);
+                    pdfBytes = await bannerReplacement.applyBannerToPDF(pdfBytes) as Uint8Array<ArrayBuffer>;
                     
                     // Εφαρμογή στοιχείων πελάτη
-                    pdfBytes = await customerDataIntegration.applyCustomerDataToPDF(pdfBytes);
+                    pdfBytes = await customerDataIntegration.applyCustomerDataToPDF(pdfBytes) as Uint8Array<ArrayBuffer>;
                     
                     // Download
                     const blob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
