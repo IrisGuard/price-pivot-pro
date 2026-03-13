@@ -15,7 +15,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [rtfHtml, setRtfHtml] = useState<string | null>(null);
+  const [rtfPages, setRtfPages] = useState<string[]>([]);
 
   const isRTF = useMemo(() => file.name.toLowerCase().endsWith(".rtf"), [file.name]);
 
@@ -27,7 +27,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
       setLoading(true);
       setError(null);
       setPreviewUrl(null);
-      setRtfHtml(null);
+      setRtfPages([]);
 
       try {
         if (!isRTF) {
