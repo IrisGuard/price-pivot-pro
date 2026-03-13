@@ -94,7 +94,8 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
         // RTF: render with dedicated RTF engine for faithful visual preview
         const rtfBuffer = await file.arrayBuffer();
         const rtfModule = (await import("rtf.js")) as any;
-        const rtfEngine = rtfModule?.RTFJS ?? rtfModule;
+        const rtfRoot = rtfModule?.default ?? rtfModule;
+        const rtfEngine = rtfRoot?.RTFJS ?? rtfRoot;
 
         if (typeof rtfEngine?.loggingEnabled === "function") {
           rtfEngine.loggingEnabled(false);
@@ -103,6 +104,12 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
         if (!rtfEngine?.Document) {
           throw new Error("RTF engine unavailable");
         }
+
+        const existingStyleContents = new Set(
+          Array.from(document.head.querySelectorAll("style"))
+            .map((style) => style.textContent ?? "")
+            .filter((content) => content.length > 0)
+        );
 
         const rtfDocument = new rtfEngine.Document(rtfBuffer, {
           onPicture: (_isLegacy: boolean | null, create: () => HTMLElement) => create(),
@@ -116,12 +123,16 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
           .map((page) => page?.outerHTML?.trim())
           .filter((html): html is string => Boolean(html && html.length > 0));
 
+        const runtimeStyleContents = Array.from(document.head.querySelectorAll("style"))
+          .map((style) => style.textContent ?? "")
+          .filter((content) => content.length > 0 && !existingStyleContents.has(content));
+
         if (pageHtml.length > 0) {
+          setRtfRuntimeStyles(runtimeStyleContents.join("\n"));
           setRtfPages(pageHtml);
           return;
         }
 
-        // No text-conversion fallback: keep original-layout preview only
         setError("Αδυναμία πιστής προβολής του RTF αρχείου");
       } catch (err) {
         console.error("Preview error:", err);
