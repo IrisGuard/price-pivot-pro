@@ -94,7 +94,7 @@ export const SimpleSupplierTool = () => {
 
       const interactivePdfBytes = await simplePDFProcessor.processFactoryPDF(pdfBytes);
 
-      const blob = new Blob([interactivePdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([interactivePdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;

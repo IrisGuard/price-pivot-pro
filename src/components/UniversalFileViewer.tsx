@@ -40,7 +40,7 @@ export const UniversalFileViewer = ({
         setIsConverting(true);
         try {
           const pdfBytes = await convertRTFToPDF(file);
-          const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+          const pdfBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
           const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
             type: 'application/pdf'
           });
