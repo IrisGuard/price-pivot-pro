@@ -16,6 +16,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [rtfPages, setRtfPages] = useState<string[]>([]);
+  const [rtfRuntimeStyles, setRtfRuntimeStyles] = useState("");
 
   const isRTF = useMemo(() => file.name.toLowerCase().endsWith(".rtf"), [file.name]);
 
@@ -31,12 +32,13 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>${rtfRuntimeStyles}</style>
     <style>
       html, body {
         margin: 0;
         padding: 0;
-        background: #f3f4f6;
-        color: #000;
+        background: hsl(220 14% 96%);
+        color: hsl(0 0% 0%);
       }
 
       * {
@@ -52,25 +54,12 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
       }
 
       .rtf-page {
-        background: #fff;
-        color: #000;
+        background: hsl(0 0% 100%);
         width: max-content;
         max-width: 100%;
-        border: 1px solid #d1d5db;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        border: 1px solid hsl(220 13% 85%);
+        box-shadow: 0 2px 6px hsl(0 0% 0% / 0.08);
         overflow: auto;
-      }
-
-      .rtf-page * {
-        color: inherit !important;
-      }
-
-      .rtf-page input,
-      .rtf-page textarea,
-      .rtf-page select {
-        color: #000 !important;
-        background: transparent !important;
-        border: 1px solid #9ca3af !important;
       }
     </style>
   </head>
@@ -78,7 +67,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
     <main class="rtf-root">${pagesHtml}</main>
   </body>
 </html>`;
-  }, [rtfPages]);
+  }, [rtfPages, rtfRuntimeStyles]);
 
   useEffect(() => {
     let cancelled = false;
