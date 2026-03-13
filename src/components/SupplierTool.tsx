@@ -32,7 +32,7 @@ const SupplierTool = () => {
     setRatio(null);
 
     try {
-      const result = await extractPricesFromPDF(selectedFile);
+      const result = await extractPricesFromFile(selectedFile);
       setPrices(result.prices);
       setDetectedTotal(result.totalDetected);
 
