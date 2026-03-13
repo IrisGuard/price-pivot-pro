@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import { RTFProcessor } from '@/lib/rtf/rtfProcessor';
 
 export interface ExtractedPrice {
   value: number;
@@ -20,15 +21,49 @@ export interface PDFExtractionResult {
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
 
 /**
+ * Extracts all prices from a PDF or RTF file
+ */
+export async function extractPricesFromFile(file: File): Promise<PDFExtractionResult> {
+  const ext = file.name.toLowerCase().split('.').pop();
+  
+  if (ext === 'rtf') {
+    return extractPricesFromRTF(file);
+  }
+  return extractPricesFromPDF(file);
+}
+
+/**
+ * Extract prices from RTF using existing RTF processor
+ */
+async function extractPricesFromRTF(file: File): Promise<PDFExtractionResult> {
+  const processor = new RTFProcessor();
+  const result = await processor.processRTFFile(file);
+  
+  const prices: ExtractedPrice[] = result.prices.map(p => ({
+    value: p.value,
+    text: `${p.value.toFixed(2)} €`,
+    x: p.x,
+    y: p.y,
+    width: 60,
+    height: 12,
+    pageIndex: p.pageIndex,
+  }));
+
+  // Find total from text
+  const totalDetected = findTotalInText(result.text);
+
+  return { prices, totalDetected, fullText: result.text };
+}
+
+/**
  * Extracts all prices from a PDF file with their exact positions
  */
-export async function extractPricesFromPDF(file: File): Promise<PDFExtractionResult> {
+async function extractPricesFromPDF(file: File): Promise<PDFExtractionResult> {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   
   const allPrices: ExtractedPrice[] = [];
   let fullText = '';
-  let totalDetected: number | null = null;
 
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
@@ -36,17 +71,12 @@ export async function extractPricesFromPDF(file: File): Promise<PDFExtractionRes
     const viewport = page.getViewport({ scale: 1.0 });
     
     let pageText = '';
-    
-    // Build text items with positions
     const items = textContent.items as any[];
     
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
+    for (const item of items) {
       if (!item.str) continue;
-      
       pageText += item.str + ' ';
       
-      // Look for price patterns in this text item and surrounding context
       const priceMatch = findPriceInText(item.str);
       if (priceMatch !== null) {
         const transform = item.transform;
@@ -54,7 +84,7 @@ export async function extractPricesFromPDF(file: File): Promise<PDFExtractionRes
           value: priceMatch,
           text: item.str.trim(),
           x: transform[4],
-          y: viewport.height - transform[5], // Convert to PDF coordinate system (bottom-up)
+          y: viewport.height - transform[5],
           width: item.width || 60,
           height: item.height || 12,
           pageIndex: pageNum - 1,
@@ -63,33 +93,38 @@ export async function extractPricesFromPDF(file: File): Promise<PDFExtractionRes
     }
     
     fullText += pageText + '\n';
-    
-    // Try to find the final total on the last pages
-    // Look for patterns like "SYNOLO=1904 EUR" or "Τελικό Σύνολο ... 2 421,10 €"
-    const totalPatterns = [
-      /SYNOLO\s*=\s*([\d.,]+)\s*EUR/i,
-      /Τελικ[οό]\s*Σ[υύ]νολο[^\d]*([\d\s.,]+)\s*€/i,
-      /TOTAL[^\d]*([\d\s.,]+)\s*€/i,
-      /Σ[υύ]νολο[^\d]*([\d\s.,]+)\s*€/i,
-    ];
-    
-    for (const pattern of totalPatterns) {
-      const match = pageText.match(pattern);
-      if (match) {
-        const cleanValue = match[1].replace(/\s/g, '').replace(',', '.');
-        const parsed = parseFloat(cleanValue);
-        if (!isNaN(parsed) && parsed > 0) {
-          totalDetected = parsed;
-        }
+  }
+
+  const totalDetected = findTotalInText(fullText);
+
+  return { prices: allPrices, totalDetected, fullText };
+}
+
+/**
+ * Find the final total in extracted text
+ */
+function findTotalInText(text: string): number | null {
+  let total: number | null = null;
+  
+  const totalPatterns = [
+    /SYNOLO\s*=\s*([\d\s.,]+)\s*EUR/i,
+    /Τελικ[οό]\s*Σ[υύ]νολο[^\d]*([\d\s.,]+)\s*€/i,
+    /TOTAL[^\d]*([\d\s.,]+)\s*€/i,
+    /Σ[υύ]νολο[^\d]*([\d\s.,]+)\s*€/i,
+  ];
+  
+  for (const pattern of totalPatterns) {
+    const match = text.match(pattern);
+    if (match) {
+      const cleanValue = match[1].replace(/\s/g, '').replace(',', '.');
+      const parsed = parseFloat(cleanValue);
+      if (!isNaN(parsed) && parsed > 0) {
+        total = parsed;
       }
     }
   }
-
-  return {
-    prices: allPrices,
-    totalDetected,
-    fullText,
-  };
+  
+  return total;
 }
 
 /**
@@ -97,21 +132,13 @@ export async function extractPricesFromPDF(file: File): Promise<PDFExtractionRes
  */
 function findPriceInText(text: string): number | null {
   const trimmed = text.trim();
-  
-  // Skip non-price content
   if (!trimmed || trimmed.length > 30) return null;
   
-  // Patterns for European price formats
   const patterns = [
-    // "285,34" or "2 421,10" or "1.904,00"
     /^([\d\s.]+,\d{2})\s*€?$/,
-    // "285.34 €"
     /^([\d\s,]+\.\d{2})\s*€?$/,
-    // "€285,34"
     /^€?\s*([\d\s.]+,\d{2})$/,
-    // Just a decimal number that looks like a price
     /^([\d\s.]+,\d{2})$/,
-    // Number with dot as decimal
     /^([\d\s,]+\.\d{2})$/,
   ];
   
@@ -119,9 +146,9 @@ function findPriceInText(text: string): number | null {
     const match = trimmed.match(pattern);
     if (match) {
       let cleanValue = match[1]
-        .replace(/\s/g, '') // remove spaces
-        .replace(/\.(?=\d{3})/g, '') // remove thousand separators (dots before 3 digits)
-        .replace(',', '.'); // convert decimal comma to dot
+        .replace(/\s/g, '')
+        .replace(/\.(?=\d{3})/g, '')
+        .replace(',', '.');
       
       const value = parseFloat(cleanValue);
       if (!isNaN(value) && value > 0 && value < 1000000) {

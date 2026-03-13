@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { extractPricesFromPDF } from "@/lib/pdf/pdfTextExtractor";
+import { extractPricesFromFile } from "@/lib/pdf/pdfTextExtractor";
 import type { ExtractedPrice } from "@/lib/pdf/pdfTextExtractor";
 
 const SupplierTool = () => {
@@ -18,8 +18,9 @@ const SupplierTool = () => {
 
   // Handle file upload
   const handleFileUpload = async (selectedFile: File) => {
-    if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
-      toast({ title: "Σφάλμα", description: "Μόνο αρχεία PDF", variant: "destructive" });
+    const ext = selectedFile.name.toLowerCase().split('.').pop();
+    if (ext !== 'pdf' && ext !== 'rtf') {
+      toast({ title: "Σφάλμα", description: "Μόνο αρχεία PDF ή RTF", variant: "destructive" });
       return;
     }
 
@@ -31,7 +32,7 @@ const SupplierTool = () => {
     setRatio(null);
 
     try {
-      const result = await extractPricesFromPDF(selectedFile);
+      const result = await extractPricesFromFile(selectedFile);
       setPrices(result.prices);
       setDetectedTotal(result.totalDetected);
 
@@ -142,11 +143,11 @@ const SupplierTool = () => {
             <CardContent className="p-12">
               <label className="flex flex-col items-center gap-4 cursor-pointer">
                 <Upload className="h-16 w-16 text-muted-foreground" />
-                <span className="text-lg font-medium text-foreground">Ανέβασε το PDF του εργοστασίου</span>
+                <span className="text-lg font-medium text-foreground">Ανέβασε το PDF ή RTF του εργοστασίου</span>
                 <span className="text-sm text-muted-foreground">Κάνε κλικ ή σύρε αρχείο εδώ</span>
                 <input
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,.rtf"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
