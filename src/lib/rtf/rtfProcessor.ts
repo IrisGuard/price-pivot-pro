@@ -76,91 +76,140 @@ export class RTFProcessor {
   }
   
   private parseRTFToText(rtfData: string): string {
-    // ΠΡΟΗΓΜΕΝΗ RTF PARSING - ΠΛΗΡΗΣ ΑΝΑΔΙΑΡΘΡΩΣΗ
-    let text = rtfData;
-    
-    // ΦΑΣΗ 1: Αφαίρεση RTF Structure και Headers
-    // Αφαίρεση RTF version και header block
-    text = text.replace(/^{\s*\\rtf1\\[^{}]*/, '');
-    
-    // ΦΑΣΗ 2: Στοχευμένη αφαίρεση Font Tables και Metadata
-    // Βελτιωμένη αφαίρεση font table με nested handling
-    text = text.replace(/\\fonttbl\s*{(?:[^{}]*{[^{}]*})*[^{}]*}/g, '');
-    // Αφαίρεση color table
-    text = text.replace(/\\colortbl[^}]*}/g, '');
-    // Αφαίρεση stylesheet
-    text = text.replace(/\\stylesheet[^}]*}/g, '');
-    // Αφαίρεση info block
-    text = text.replace(/\\info\s*{[^{}]*}/g, '');
-    // Αφαίρεση generator info
-    text = text.replace(/\\generator[^;]*;/g, '');
-    
-    // ΦΑΣΗ 3: Πρώτη περιοχή - Unicode characters (Ελληνικά)
-    // Enhanced Unicode handling για Ελληνικούς χαρακτήρες
-    text = text.replace(/\\u(\d+)\\?'?[0-9a-fA-F]*\?/g, (match, code) => {
-      const charCode = parseInt(code, 10);
-      // Extended range για Ελληνικούς χαρακτήρες
-      if (charCode >= 32 && charCode <= 65535) {
-        try {
-          return String.fromCharCode(charCode);
-        } catch {
-          return ' ';
-        }
-      }
-      return '';
-    });
-    
-    // ΦΑΣΗ 4: Hex character sequences
-    text = text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) => {
+    // 1) Remove non-content RTF groups (font tables, style metadata, etc.)
+    let text = this.stripNonContentGroups(rtfData);
+
+    // 2) Decode unicode escapes (supports negative values used in RTF)
+    text = text.replace(/\\u(-?\d+)\??/g, (_, code) => {
+      const parsed = Number.parseInt(code, 10);
+      if (Number.isNaN(parsed)) return '';
+      const normalized = parsed < 0 ? 65536 + parsed : parsed;
+      if (normalized < 32 || normalized > 65535) return ' ';
       try {
-        const charCode = parseInt(hex, 16);
-        if (charCode >= 32 && charCode <= 255) {
-          return String.fromCharCode(charCode);
-        }
+        return String.fromCharCode(normalized);
       } catch {
         return ' ';
       }
-      return '';
     });
-    
-    // ΦΑΣΗ 5: RTF Control Words - Εκτεταμένη λίστα
-    // Formatting controls
-    text = text.replace(/\\(b|i|ul|strike|sub|super|scaps|caps)\d*\s*/g, '');
-    // Font και size controls  
-    text = text.replace(/\\(f|fs|cf|cb|highlight)\d+\s*/g, '');
-    // Paragraph formatting
-    text = text.replace(/\\(ql|qr|qc|qj|li|ri|fi|sb|sa)\d*\s*/g, '');
-    // Page formatting
-    text = text.replace(/\\(paperw|paperh|margl|margr|margt|margb)\d+\s*/g, '');
-    // Generic control words
-    text = text.replace(/\\[a-zA-Z]+\d*\s*/g, ' ');
-    
-    // ΦΑΣΗ 6: Formatting conversion
-    text = text.replace(/\\par\b/g, '\n');
-    text = text.replace(/\\line\b/g, '\n');
-    text = text.replace(/\\tab\b/g, '\t');
-    text = text.replace(/\\cell\b/g, '\t');
-    text = text.replace(/\\row\b/g, '\n');
-    
-    // ΦΑΣΗ 7: Cleanup και normalization
-    // Αφαίρεση brackets
-    text = text.replace(/[{}]/g, ' ');
-    // Αφαίρεση ειδικών RTF sequences
-    text = text.replace(/\\[^a-zA-Z\s]/g, '');
-    // Normalization whitespace
-    text = text.replace(/\s+/g, ' ');
-    text = text.replace(/^\s+|\s+$/gm, '');
-    
-    // ΦΑΣΗ 8: Τελικός καθαρισμός non-printable characters
-    // Διατήρηση μόνο έγκυρων χαρακτήρων (Latin, Greek, punctuation, numbers)
-    text = text.replace(/[^\u0020-\u007E\u0370-\u03FF\u1F00-\u1FFF\s\n\t]/g, ' ');
-    
-    // Final cleanup
-    text = text.replace(/\n{3,}/g, '\n\n');
-    text = text.replace(/[ \t]{2,}/g, ' ');
-    text = text.trim();
-    
-    return text;
+
+    // 3) Decode hex escaped characters
+    text = text.replace(/\\'([0-9a-fA-F]{2})/g, (_, hex) => {
+      const value = Number.parseInt(hex, 16);
+      return Number.isNaN(value) ? ' ' : String.fromCharCode(value);
+    });
+
+    // 4) Convert structural controls before removing generic controls
+    text = text
+      .replace(/\\(par|line|row|page)\b/g, '\n')
+      .replace(/\\(tab|cell)\b/g, '\t');
+
+    // 5) Remove remaining control symbols / words
+    text = text
+      .replace(/\\\*/g, '')
+      .replace(/\\[a-zA-Z]+-?\d*\s?/g, ' ')
+      .replace(/\\[{}\\]/g, ' ')
+      .replace(/[{}]/g, ' ')
+      .replace(/\r/g, '\n');
+
+    // 6) Line-by-line cleanup while preserving table tabs
+    const lines = text
+      .split('\n')
+      .map((line) => this.normalizeLine(line))
+      .filter((line) => line.length > 0 && !this.isNoiseLine(line));
+
+    return lines.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  private stripNonContentGroups(rtfData: string): string {
+    const destinations = [
+      'fonttbl',
+      'colortbl',
+      'stylesheet',
+      'info',
+      'xmlnstbl',
+      'revtbl',
+      'listtable',
+      'listoverridetable'
+    ];
+
+    let result = '';
+    let depth = 0;
+    let skipDepth = -1;
+
+    for (let i = 0; i < rtfData.length; i++) {
+      const char = rtfData[i];
+      const next = rtfData[i + 1];
+
+      // Keep escaped braces/backslashes intact for later cleanup
+      if (char === '\\' && (next === '{' || next === '}' || next === '\\')) {
+        if (skipDepth === -1) result += char + next;
+        i++;
+        continue;
+      }
+
+      if (char === '{') {
+        depth += 1;
+
+        if (skipDepth === -1) {
+          const lookahead = rtfData.slice(i + 1, i + 180);
+          const isIgnorable = /^\s*\\\*/.test(lookahead);
+          const isDestination = destinations.some((destination) =>
+            new RegExp(`\\\\${destination}\\b`, 'i').test(lookahead)
+          );
+
+          if (isIgnorable || isDestination) {
+            skipDepth = depth;
+            continue;
+          }
+
+          result += char;
+        }
+
+        continue;
+      }
+
+      if (char === '}') {
+        if (skipDepth === depth) {
+          skipDepth = -1;
+          depth -= 1;
+          continue;
+        }
+
+        depth = Math.max(0, depth - 1);
+        if (skipDepth === -1) result += char;
+        continue;
+      }
+
+      if (skipDepth === -1) {
+        result += char;
+      }
+    }
+
+    return result;
+  }
+
+  private normalizeLine(line: string): string {
+    return line
+      .replace(/[ ]{2,}/g, ' ')
+      .replace(/\t{2,}/g, '\t')
+      .trim();
+  }
+
+  private isNoiseLine(line: string): boolean {
+    const lower = line.toLowerCase();
+    const semicolons = (line.match(/;/g) || []).length;
+
+    // Typical font table leak pattern
+    if (semicolons > 6 && /(times new roman|calibri|arial|tahoma|cambria)/i.test(line)) {
+      return true;
+    }
+
+    // Common RTF metadata/control residue
+    if (/^(ansi|ansicpg\d+|deff\d+|viewkind\d+|uc\d+|pard|plain|rtlch|ltrch)/.test(lower)) {
+      return true;
+    }
+
+    return false;
   }
   
   private extractPricesFromRTF(text: string): Array<{ value: number; x: number; y: number; pageIndex: number }> {
