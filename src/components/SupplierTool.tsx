@@ -147,7 +147,7 @@ const SupplierTool = () => {
                 <span className="text-sm text-muted-foreground">Κάνε κλικ ή σύρε αρχείο εδώ</span>
                 <input
                   type="file"
-                  accept=".pdf"
+                  accept=".pdf,.rtf"
                   className="hidden"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
