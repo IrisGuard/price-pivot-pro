@@ -195,24 +195,17 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
     );
   }
 
-  // RTF: rendered pages
-  if (rtfPages.length > 0) {
+  // RTF: rendered in isolated frame to avoid app theme/style interference
+  if (rtfPreviewSrcDoc) {
     return (
       <div className="w-full max-w-[1120px] mx-auto">
-        <div className="bg-muted/20 border border-border rounded-lg overflow-auto h-[calc(100vh-170px)] min-h-[640px] p-4">
-          <div className="space-y-6">
-            {rtfPages.map((pageHtml, index) => (
-              <div
-                key={`${file.name}-page-${index}`}
-                className="border border-border rounded-md shadow-sm overflow-auto"
-                style={{
-                  backgroundColor: "hsl(0 0% 100%)",
-                  color: "hsl(0 0% 0%)",
-                }}
-                dangerouslySetInnerHTML={{ __html: pageHtml }}
-              />
-            ))}
-          </div>
+        <div className="bg-muted/20 border border-border rounded-lg overflow-hidden h-[calc(100vh-170px)] min-h-[640px]">
+          <iframe
+            title={`${file.name} RTF preview`}
+            className="w-full h-full"
+            srcDoc={rtfPreviewSrcDoc}
+            sandbox="allow-same-origin"
+          />
         </div>
       </div>
     );
