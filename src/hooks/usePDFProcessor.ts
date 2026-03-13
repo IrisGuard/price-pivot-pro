@@ -72,7 +72,7 @@ export const usePDFProcessor = () => {
       });
 
       // Create download link with specific filename
-      const blob = new Blob([sealedPdfBytes], { type: 'application/pdf' });
+      const blob = new Blob([sealedPdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
