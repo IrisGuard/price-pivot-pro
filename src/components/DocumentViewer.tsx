@@ -19,6 +19,67 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
 
   const isRTF = useMemo(() => file.name.toLowerCase().endsWith(".rtf"), [file.name]);
 
+  const rtfPreviewSrcDoc = useMemo(() => {
+    if (rtfPages.length === 0) return null;
+
+    const pagesHtml = rtfPages
+      .map((pageHtml, index) => `<section class="rtf-page" data-page="${index + 1}">${pageHtml}</section>`)
+      .join("");
+
+    return `<!doctype html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        background: #f3f4f6;
+        color: #000;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      .rtf-root {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        align-items: center;
+      }
+
+      .rtf-page {
+        background: #fff;
+        color: #000;
+        width: max-content;
+        max-width: 100%;
+        border: 1px solid #d1d5db;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        overflow: auto;
+      }
+
+      .rtf-page * {
+        color: inherit !important;
+      }
+
+      .rtf-page input,
+      .rtf-page textarea,
+      .rtf-page select {
+        color: #000 !important;
+        background: transparent !important;
+        border: 1px solid #9ca3af !important;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="rtf-root">${pagesHtml}</main>
+  </body>
+</html>`;
+  }, [rtfPages]);
+
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
@@ -70,12 +131,8 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
           return;
         }
 
-        // Fallback: keep app usable even if RTF renderer returns empty output
-        const { RTFProcessor } = await import("@/lib/rtf/rtfProcessor");
-        const processor = new RTFProcessor();
-        const result = await processor.processRTFFile(file);
-        if (cancelled) return;
-        setRtfPages([`<div>${convertTextToHtml(result.text)}</div>`]);
+        // No text-conversion fallback: keep original-layout preview only
+        setError("Αδυναμία πιστής προβολής του RTF αρχείου");
       } catch (err) {
         console.error("Preview error:", err);
         if (!cancelled) {
@@ -138,24 +195,17 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
     );
   }
 
-  // RTF: rendered pages
-  if (rtfPages.length > 0) {
+  // RTF: rendered in isolated frame to avoid app theme/style interference
+  if (rtfPreviewSrcDoc) {
     return (
       <div className="w-full max-w-[1120px] mx-auto">
-        <div className="bg-muted/20 border border-border rounded-lg overflow-auto h-[calc(100vh-170px)] min-h-[640px] p-4">
-          <div className="space-y-6">
-            {rtfPages.map((pageHtml, index) => (
-              <div
-                key={`${file.name}-page-${index}`}
-                className="border border-border rounded-md shadow-sm overflow-auto"
-                style={{
-                  backgroundColor: "hsl(0 0% 100%)",
-                  color: "hsl(0 0% 0%)",
-                }}
-                dangerouslySetInnerHTML={{ __html: pageHtml }}
-              />
-            ))}
-          </div>
+        <div className="bg-muted/20 border border-border rounded-lg overflow-hidden h-[calc(100vh-170px)] min-h-[640px]">
+          <iframe
+            title={`${file.name} RTF preview`}
+            className="w-full h-full"
+            srcDoc={rtfPreviewSrcDoc}
+            sandbox="allow-same-origin"
+          />
         </div>
       </div>
     );
