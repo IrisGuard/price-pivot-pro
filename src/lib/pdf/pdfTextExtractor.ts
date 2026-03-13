@@ -59,7 +59,7 @@ async function extractPricesFromRTF(file: File): Promise<PDFExtractionResult> {
  */
 async function extractPricesFromPDF(file: File): Promise<PDFExtractionResult> {
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer), disableWorker: true } as any).promise;
   
   const allPrices: ExtractedPrice[] = [];
   let fullText = '';
