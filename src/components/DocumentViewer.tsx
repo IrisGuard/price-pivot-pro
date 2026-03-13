@@ -131,12 +131,8 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
           return;
         }
 
-        // Fallback: keep app usable even if RTF renderer returns empty output
-        const { RTFProcessor } = await import("@/lib/rtf/rtfProcessor");
-        const processor = new RTFProcessor();
-        const result = await processor.processRTFFile(file);
-        if (cancelled) return;
-        setRtfPages([`<div>${convertTextToHtml(result.text)}</div>`]);
+        // No text-conversion fallback: keep original-layout preview only
+        setError("Αδυναμία πιστής προβολής του RTF αρχείου");
       } catch (err) {
         console.error("Preview error:", err);
         if (!cancelled) {
