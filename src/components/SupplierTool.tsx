@@ -143,7 +143,7 @@ const SupplierTool = () => {
             <CardContent className="p-12">
               <label className="flex flex-col items-center gap-4 cursor-pointer">
                 <Upload className="h-16 w-16 text-muted-foreground" />
-                <span className="text-lg font-medium text-foreground">Ανέβασε το PDF του εργοστασίου</span>
+                <span className="text-lg font-medium text-foreground">Ανέβασε το PDF ή RTF του εργοστασίου</span>
                 <span className="text-sm text-muted-foreground">Κάνε κλικ ή σύρε αρχείο εδώ</span>
                 <input
                   type="file"
