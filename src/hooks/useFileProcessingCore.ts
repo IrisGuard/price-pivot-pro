@@ -47,7 +47,7 @@ export const useFileProcessingCore = (callbacks: ProcessingCallbacks) => {
       console.log('✅ RTF converted successfully, PDF size:', pdfBytes.length, 'bytes');
     
       setProgress(75);
-      const pdfBlob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const pdfBlob = new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' });
       const pdfFile = new File([pdfBlob], file.name.replace('.rtf', '.pdf'), {
         type: 'application/pdf'
       });
