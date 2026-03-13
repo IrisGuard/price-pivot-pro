@@ -147,7 +147,11 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
             {rtfPages.map((pageHtml, index) => (
               <div
                 key={`${file.name}-page-${index}`}
-                className="bg-background border border-border rounded-md shadow-sm overflow-auto"
+                className="border border-border rounded-md shadow-sm overflow-auto"
+                style={{
+                  backgroundColor: "hsl(0 0% 100%)",
+                  color: "hsl(0 0% 0%)",
+                }}
                 dangerouslySetInnerHTML={{ __html: pageHtml }}
               />
             ))}
