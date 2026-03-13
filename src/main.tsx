@@ -14,12 +14,11 @@ if (envValidation.warnings.length > 0) {
   console.warn('Environment Configuration Warnings:', envValidation.warnings);
 }
 
-// Configure PDF.js worker immediately - CRITICAL for production
+// Configure PDF.js worker with CDN (ES module compatible)
 if (typeof pdfjsLib.GlobalWorkerOptions !== 'undefined') {
-  // Always use local worker to avoid CORS issues
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.js';
-  console.log('🔧 PDF.js worker configured:', pdfjsLib.GlobalWorkerOptions.workerSrc);
-  console.log('🌍 Environment:', envValidation.config.APP_ENV);
+  const pdfjsVersion = pdfjsLib.version;
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsVersion}/build/pdf.worker.min.mjs`;
+  console.log('🔧 PDF.js worker configured, version:', pdfjsVersion);
 }
 
 // Enhanced error handling for production

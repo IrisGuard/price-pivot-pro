@@ -3,7 +3,7 @@ import * as pdfjsLib from "pdfjs-dist";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { Loader2 } from "lucide-react";
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.js";
+// Worker is set globally in main.tsx
 
 interface DocumentViewerProps {
   file: File;
