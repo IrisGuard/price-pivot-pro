@@ -15,7 +15,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [rtfHtml, setRtfHtml] = useState<string | null>(null);
+  const [rtfPages, setRtfPages] = useState<string[]>([]);
 
   const isRTF = useMemo(() => file.name.toLowerCase().endsWith(".rtf"), [file.name]);
 
@@ -27,7 +27,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
       setLoading(true);
       setError(null);
       setPreviewUrl(null);
-      setRtfHtml(null);
+      setRtfPages([]);
 
       try {
         if (!isRTF) {
@@ -40,16 +40,42 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
           return;
         }
 
-        // RTF: parse with RTFProcessor and render as HTML
-        const { RTFProcessor } = await import("@/lib/rtf/rtfProcessor");
-        const processor = new RTFProcessor();
-        const result = await processor.processRTFFile(file);
+        // RTF: render with dedicated RTF engine for faithful visual preview
+        const rtfBuffer = await file.arrayBuffer();
+        const rtfModule = (await import("rtf.js")) as any;
+        const rtfEngine = rtfModule?.RTFJS ?? rtfModule;
+
+        if (typeof rtfEngine?.loggingEnabled === "function") {
+          rtfEngine.loggingEnabled(false);
+        }
+
+        if (!rtfEngine?.Document) {
+          throw new Error("RTF engine unavailable");
+        }
+
+        const rtfDocument = new rtfEngine.Document(rtfBuffer, {
+          onPicture: (_isLegacy: boolean | null, create: () => HTMLElement) => create(),
+        });
+
+        const renderedPages = (await rtfDocument.render()) as HTMLElement[];
 
         if (cancelled) return;
 
-        // Convert parsed text to styled HTML
-        const html = convertTextToHtml(result.text);
-        setRtfHtml(html);
+        const pageHtml = renderedPages
+          .map((page) => page?.outerHTML?.trim())
+          .filter((html): html is string => Boolean(html && html.length > 0));
+
+        if (pageHtml.length > 0) {
+          setRtfPages(pageHtml);
+          return;
+        }
+
+        // Fallback: keep app usable even if RTF renderer returns empty output
+        const { RTFProcessor } = await import("@/lib/rtf/rtfProcessor");
+        const processor = new RTFProcessor();
+        const result = await processor.processRTFFile(file);
+        if (cancelled) return;
+        setRtfPages([`<div>${convertTextToHtml(result.text)}</div>`]);
       } catch (err) {
         console.error("Preview error:", err);
         if (!cancelled) {
@@ -112,23 +138,21 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
     );
   }
 
-  // RTF: rendered HTML
-  if (rtfHtml) {
+  // RTF: rendered pages
+  if (rtfPages.length > 0) {
     return (
-      <div className="w-full max-w-[980px] mx-auto">
-        <div
-          className="bg-white shadow-lg rounded-lg border border-border overflow-auto"
-          style={{
-            minHeight: "640px",
-            maxHeight: "calc(100vh - 170px)",
-            padding: "40px 50px",
-            fontFamily: "'Times New Roman', serif",
-            fontSize: "12px",
-            lineHeight: "1.6",
-            color: "#000",
-          }}
-          dangerouslySetInnerHTML={{ __html: rtfHtml }}
-        />
+      <div className="w-full max-w-[1120px] mx-auto">
+        <div className="bg-muted/20 border border-border rounded-lg overflow-auto h-[calc(100vh-170px)] min-h-[640px] p-4">
+          <div className="space-y-6">
+            {rtfPages.map((pageHtml, index) => (
+              <div
+                key={`${file.name}-page-${index}`}
+                className="bg-background border border-border rounded-md shadow-sm overflow-auto"
+                dangerouslySetInnerHTML={{ __html: pageHtml }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
