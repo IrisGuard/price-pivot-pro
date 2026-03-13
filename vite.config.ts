@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  build: {
+    target: 'es2022',
+  },
   plugins: [
     react(),
     mode === 'development' &&
@@ -19,16 +22,9 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  assetsInclude: ['**/*.worker.js'],
   optimizeDeps: {
-    exclude: ['pdfjs-dist']
+    esbuildOptions: {
+      target: 'es2022',
+    },
   },
-  worker: {
-    format: 'es',
-    rollupOptions: {
-      output: {
-        entryFileNames: '[name].js'
-      }
-    }
-  }
 }));
