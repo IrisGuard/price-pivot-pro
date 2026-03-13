@@ -18,8 +18,9 @@ const SupplierTool = () => {
 
   // Handle file upload
   const handleFileUpload = async (selectedFile: File) => {
-    if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
-      toast({ title: "Σφάλμα", description: "Μόνο αρχεία PDF", variant: "destructive" });
+    const ext = selectedFile.name.toLowerCase().split('.').pop();
+    if (ext !== 'pdf' && ext !== 'rtf') {
+      toast({ title: "Σφάλμα", description: "Μόνο αρχεία PDF ή RTF", variant: "destructive" });
       return;
     }
 
