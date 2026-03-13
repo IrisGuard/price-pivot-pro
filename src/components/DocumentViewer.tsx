@@ -16,6 +16,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [rtfPages, setRtfPages] = useState<string[]>([]);
+  const [rtfRuntimeStyles, setRtfRuntimeStyles] = useState("");
 
   const isRTF = useMemo(() => file.name.toLowerCase().endsWith(".rtf"), [file.name]);
 
@@ -31,12 +32,13 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>${rtfRuntimeStyles}</style>
     <style>
       html, body {
         margin: 0;
         padding: 0;
-        background: #f3f4f6;
-        color: #000;
+        background: hsl(220 14% 96%);
+        color: hsl(0 0% 0%);
       }
 
       * {
@@ -52,25 +54,12 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
       }
 
       .rtf-page {
-        background: #fff;
-        color: #000;
+        background: hsl(0 0% 100%);
         width: max-content;
         max-width: 100%;
-        border: 1px solid #d1d5db;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        border: 1px solid hsl(220 13% 85%);
+        box-shadow: 0 2px 6px hsl(0 0% 0% / 0.08);
         overflow: auto;
-      }
-
-      .rtf-page * {
-        color: inherit !important;
-      }
-
-      .rtf-page input,
-      .rtf-page textarea,
-      .rtf-page select {
-        color: #000 !important;
-        background: transparent !important;
-        border: 1px solid #9ca3af !important;
       }
     </style>
   </head>
@@ -78,7 +67,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
     <main class="rtf-root">${pagesHtml}</main>
   </body>
 </html>`;
-  }, [rtfPages]);
+  }, [rtfPages, rtfRuntimeStyles]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,6 +78,7 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
       setError(null);
       setPreviewUrl(null);
       setRtfPages([]);
+      setRtfRuntimeStyles("");
 
       try {
         if (!isRTF) {
@@ -104,7 +94,8 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
         // RTF: render with dedicated RTF engine for faithful visual preview
         const rtfBuffer = await file.arrayBuffer();
         const rtfModule = (await import("rtf.js")) as any;
-        const rtfEngine = rtfModule?.RTFJS ?? rtfModule;
+        const rtfRoot = rtfModule?.default ?? rtfModule;
+        const rtfEngine = rtfRoot?.RTFJS ?? rtfRoot;
 
         if (typeof rtfEngine?.loggingEnabled === "function") {
           rtfEngine.loggingEnabled(false);
@@ -113,6 +104,12 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
         if (!rtfEngine?.Document) {
           throw new Error("RTF engine unavailable");
         }
+
+        const existingStyleContents = new Set(
+          Array.from(document.head.querySelectorAll("style"))
+            .map((style) => style.textContent ?? "")
+            .filter((content) => content.length > 0)
+        );
 
         const rtfDocument = new rtfEngine.Document(rtfBuffer, {
           onPicture: (_isLegacy: boolean | null, create: () => HTMLElement) => create(),
@@ -126,12 +123,16 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
           .map((page) => page?.outerHTML?.trim())
           .filter((html): html is string => Boolean(html && html.length > 0));
 
+        const runtimeStyleContents = Array.from(document.head.querySelectorAll("style"))
+          .map((style) => style.textContent ?? "")
+          .filter((content) => content.length > 0 && !existingStyleContents.has(content));
+
         if (pageHtml.length > 0) {
+          setRtfRuntimeStyles(runtimeStyleContents.join("\n"));
           setRtfPages(pageHtml);
           return;
         }
 
-        // No text-conversion fallback: keep original-layout preview only
         setError("Αδυναμία πιστής προβολής του RTF αρχείου");
       } catch (err) {
         console.error("Preview error:", err);
@@ -214,75 +215,3 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
   return null;
 };
 
-/**
- * Convert parsed plain text to styled HTML that looks like the document
- */
-function convertTextToHtml(text: string): string {
-  if (!text || text.trim().length === 0) {
-    return '<p style="color: #999;">Δεν βρέθηκε περιεχόμενο στο αρχείο.</p>';
-  }
-
-  // Split into lines
-  const lines = text.split("\n");
-  let html = "";
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-
-    if (trimmed === "") {
-      html += "<br/>";
-      continue;
-    }
-
-    // Detect table-like rows (tab-separated values)
-    if (trimmed.includes("\t")) {
-      const cells = trimmed.split("\t").map(c => c.trim()).filter(c => c);
-      if (cells.length >= 2) {
-        html += '<div style="display: flex; border-bottom: 1px solid #ddd; padding: 3px 0;">';
-        cells.forEach((cell, i) => {
-          const isPrice = /\d+[.,]\d{2}\s*€?$/.test(cell) || /€\s*\d/.test(cell);
-          const style = i === 0
-            ? 'flex: 1; font-weight: 500;'
-            : `min-width: 120px; text-align: right;${isPrice ? ' color: #0066cc; font-weight: 600;' : ''}`;
-          html += `<span style="${style}">${escapeHtml(cell)}</span>`;
-        });
-        html += "</div>";
-        continue;
-      }
-    }
-
-    // Detect headers/titles (all caps or short bold-looking lines)
-    const isHeader = trimmed === trimmed.toUpperCase() && trimmed.length > 3 && trimmed.length < 80 && /[A-ZΑ-Ω]/.test(trimmed);
-    
-    // Detect section titles like "001 - Component 001"
-    const isSection = /^\d{3}\s*-\s*Component/i.test(trimmed);
-
-    // Detect price lines
-    const isPrice = /\d+[.,]\d{2}\s*€/.test(trimmed) || /€\s*\d/.test(trimmed);
-    
-    // Detect totals
-    const isTotal = /σύνολο|total|synolo/i.test(trimmed);
-
-    if (isSection) {
-      html += `<div style="background: #4472C4; color: white; padding: 6px 10px; margin: 16px 0 8px; font-weight: bold; font-size: 13px;">${escapeHtml(trimmed)}</div>`;
-    } else if (isTotal) {
-      html += `<div style="background: #f0f0f0; padding: 6px 10px; font-weight: bold; border-top: 2px solid #333; margin-top: 8px;">${escapeHtml(trimmed)}</div>`;
-    } else if (isHeader) {
-      html += `<div style="font-weight: bold; font-size: 14px; margin: 12px 0 4px; color: #333;">${escapeHtml(trimmed)}</div>`;
-    } else if (isPrice) {
-      html += `<div style="color: #0066cc; font-weight: 500;">${escapeHtml(trimmed)}</div>`;
-    } else {
-      html += `<div style="margin: 2px 0;">${escapeHtml(trimmed)}</div>`;
-    }
-  }
-
-  return html;
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
