@@ -138,23 +138,21 @@ export const DocumentViewer = ({ file }: DocumentViewerProps) => {
     );
   }
 
-  // RTF: rendered HTML
-  if (rtfHtml) {
+  // RTF: rendered pages
+  if (rtfPages.length > 0) {
     return (
-      <div className="w-full max-w-[980px] mx-auto">
-        <div
-          className="bg-white shadow-lg rounded-lg border border-border overflow-auto"
-          style={{
-            minHeight: "640px",
-            maxHeight: "calc(100vh - 170px)",
-            padding: "40px 50px",
-            fontFamily: "'Times New Roman', serif",
-            fontSize: "12px",
-            lineHeight: "1.6",
-            color: "#000",
-          }}
-          dangerouslySetInnerHTML={{ __html: rtfHtml }}
-        />
+      <div className="w-full max-w-[1120px] mx-auto">
+        <div className="bg-muted/20 border border-border rounded-lg overflow-auto h-[calc(100vh-170px)] min-h-[640px] p-4">
+          <div className="space-y-6">
+            {rtfPages.map((pageHtml, index) => (
+              <div
+                key={`${file.name}-page-${index}`}
+                className="bg-background border border-border rounded-md shadow-sm overflow-auto"
+                dangerouslySetInnerHTML={{ __html: pageHtml }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
